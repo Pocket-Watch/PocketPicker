@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+  "name": "Pick Pocket",
+  "description": "Retrieve playable media URLs from webpages you visit",
+  "version": "1.0",
+  "homepage_url": "https://github.com/Pocket-Watch/PocketPicker",
+  "icons": {
+    "240": "icons/pickpocket.png"
+  },
+  "browser_action": {
+    "default_popup": "picker.html",
+    "default_icon": "icons/pickpocket.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["picker.js"]
+    }
+  ]
+}
