@@ -51,12 +51,12 @@ function processRequest(request) {
 
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "getEntries") {
-        console.log("Foreground is requesting: getEntries");
+        console.log("getEntries - received from foreground");
         sendResponse({entries: entryQueue});
         return;
     }
     if (message.type === "clearEntries") {
-        console.log("Foreground is requesting: getEntries");
+        console.log("clearEntries - received from foreground");
         entryQueue.length = 0;
     }
     // entryQueue = [];
