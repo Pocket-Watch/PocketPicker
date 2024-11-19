@@ -4,11 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pocket Picker</title>
+    <link rel="stylesheet" href="picker.css">
 </head>
 <body>
-    <h1>Extension Popup</h1>
-    <button id="search">Search</button>
-    <input type="text" id="pocket-url">
+    <h2>Pocket picker</h2>
+    <button id="clear">Clear entries</button>
+    <button id="refresh">Refresh</button>
+    <table id="entries">
+        <tr>
+            <th>URL</th>
+            <th>Referer</th>
+            <th>Origin</th>
+            <th>Time</th>
+        </tr>
+    </table>
     <script src="picker.js"></script>
 </body>
 </html>

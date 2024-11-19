@@ -14,6 +14,9 @@ browser.webRequest.onSendHeaders.addListener(processRequest,
     ["requestHeaders"]
 );
 
+
+let entryQueue = []
+
 function processRequest(request) {
     if (request.method !== "GET" && request.method !== "POST") {
         return;
@@ -40,11 +43,32 @@ function processRequest(request) {
             referer = header.value;
         }
     }
-    console.log("URL:", request.url);
-    console.log("Origin:", origin);
-    console.log("Referer:", referer);
+    let entry = new Entry(request.url, origin, referer);
+    entryQueue.push(entry)
+    console.log(entry)
+    console.log(entryQueue)
 }
 
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === "getEntries") {
+        console.log("Foreground is requesting: getEntries");
+        sendResponse({entries: entryQueue});
+        return;
+    }
+    if (message.type === "clearEntries") {
+        console.log("Foreground is requesting: getEntries");
+        entryQueue.length = 0;
+    }
+    // entryQueue = [];
+});
 
+class Entry {
+    constructor(url, origin, referer) {
+        this.time = Date.now();
+        this.url = url;
+        this.origin = origin;
+        this.referer = referer;
+    }
+}
 // For "webRequest.onBeforeRequest" headers are undefined even if "requestHeaders" is passed.
 // Invalid enumeration value "requestHeaders" for webRequest.onBeforeRequest.
