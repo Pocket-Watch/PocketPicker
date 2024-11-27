@@ -2,17 +2,27 @@ console.log("Background worker started at", Date.now(), "!");
 
 const MEDIA_EXTENSIONS = ["mp4", "mp3", "mp2", "mov", "mkv", "webm", "m3u8", "m3u"]
 const IGNORE_EXTENSIONLESS = true;
+var isChromium = false;
 
-// Needs testing on Chromium
+// 'browser' is undefined in Chromium but in Firefox both 'chrome' and 'browser' are defined
 if (typeof browser === "undefined") {
+    isChromium = true;
     browser = chrome;
 }
 
 // Should only listen selectively, instead of always in the background - removeListener
-browser.webRequest.onSendHeaders.addListener(processRequest,
-    { urls: ["<all_urls>"] },
-    ["requestHeaders"]
-);
+if (isChromium) {
+    // Chromium considers headers to be 'extra' so 'extraHeaders' is necessary to read them
+    chrome.webRequest.onSendHeaders.addListener(processRequest,
+        { urls: ["<all_urls>"] },
+        ["requestHeaders", "extraHeaders"]
+    );
+} else {
+    browser.webRequest.onSendHeaders.addListener(processRequest,
+        { urls: ["<all_urls>"] },
+        ["requestHeaders"]
+    );
+}
 
 
 let entryQueue = []
@@ -46,7 +56,6 @@ function processRequest(request) {
     let entry = new Entry(request.url, origin, referer);
     entryQueue.push(entry)
     console.log(entry)
-    console.log(entryQueue)
 }
 
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
