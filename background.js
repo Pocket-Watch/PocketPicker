@@ -58,14 +58,17 @@ function processRequest(request) {
     console.log(entry)
 }
 
+const GET_ENTRIES = "get_entries";
+const CLEAR_ENTRIES = "clear_entries";
+
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === "getEntries") {
-        console.log("getEntries - received from foreground");
+    if (message.type === GET_ENTRIES) {
+        console.log(GET_ENTRIES, "- received from foreground");
         sendResponse({entries: entryQueue});
         return;
     }
-    if (message.type === "clearEntries") {
-        console.log("clearEntries - received from foreground");
+    if (message.type === CLEAR_ENTRIES) {
+        console.log(CLEAR_ENTRIES, "- received from foreground");
         entryQueue.length = 0;
     }
     // entryQueue = [];

@@ -12,33 +12,58 @@ const refreshButton = document.getElementById("refresh");
 function createTableRow(entry) {
     let tableRow = document.createElement("tr");
 
-    let urlData = createTdWithDiv(entry.url);
-    let refererData = createTdWithDiv(entry.referer)
-    let originData = createTdWithDiv(entry.origin)
-    let timeData = createTdWithDiv(entry.time)
+    let urlData = createTdWithInput(entry.url);
+    let refererData = createTdWithInput(entry.referer)
+    let originData = createTdWithInput(entry.origin)
+    let secondsElapsed = Date.now() / 1000 - entry.time / 1000;
+    let timeData = createTdWithInput(formatTime(secondsElapsed))
 
     tableRow.append(urlData, refererData, originData, timeData)
     entriesTable.appendChild(tableRow)
 }
 
+function formatTime(seconds) {
+    let time = "";
+    if (seconds >= 3600) {
+        let hours = (seconds / 3600) | 0;
+        seconds %= 3600;
+        time += hours + "h ";
+    }
+    if (seconds >= 60) {
+        let minutes = (seconds / 60) | 0;
+        seconds %= 60;
+        time += minutes + "m ";
+    }
 
-function createTdWithDiv(content) {
+    if (seconds > 0) {
+        seconds |= 0;
+        time += seconds + "s ";
+    }
+    time += " ago";
+    return time;
+}
+
+function createTdWithInput(content) {
     let td = document.createElement("td");
-    let div = document.createElement("div");
-    div.className = "scrollable"
-    div.textContent = content;
-    td.appendChild(div);
+    let input = document.createElement("input");
+    input.value = content;
+    input.readOnly = true;
+    input.className = "cell"
+    td.appendChild(input);
     return td;
 }
 
+const GET_ENTRIES = "get_entries";
+const CLEAR_ENTRIES = "clear_entries";
+
 function clearEntries() {
-    browser.runtime.sendMessage({type: "clearEntries"});
+    browser.runtime.sendMessage({type: CLEAR_ENTRIES});
     clearTable();
 }
 
 function getEntries() {
     clearTable();
-    browser.runtime.sendMessage({type: "getEntries"}, (response) => {
+    browser.runtime.sendMessage({type: GET_ENTRIES}, (response) => {
         let entries = response.entries;
         if (entries.length === 0) {
             return;
@@ -48,7 +73,6 @@ function getEntries() {
             createTableRow(entries[i])
         }
     });
-
 }
 
 function clearTable() {
