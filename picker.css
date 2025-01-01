@@ -19,7 +19,7 @@ table {
 
 th, td {
     border: 1px solid #ddd;
-    padding: 8px;
+    padding: 2px;
     color: white;
     max-width: 100px;
     overflow-clip: auto;
@@ -37,7 +37,10 @@ th {
     height: 100%;
     margin: 0;
     padding: 0;
-    color: black;
+    color: white;
+    background: transparent;
+    outline: none;
+    border: none;
 }
 
 tr:hover {
