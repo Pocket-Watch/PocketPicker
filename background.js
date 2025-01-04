@@ -1,6 +1,7 @@
 console.log("Background worker started at", Date.now(), "!");
 
 const MEDIA_EXTENSIONS = ["mp4", "mp3", "mp2", "mov", "mkv", "webm", "m3u8", "m3u"]
+const ACCEPTED_METHODS = ["GET", "POST", "HEAD"];
 const IGNORE_EXTENSIONLESS = true;
 var isChromium = false;
 
@@ -28,7 +29,7 @@ if (isChromium) {
 let entryQueue = []
 
 function processRequest(request) {
-    if (request.method !== "GET" && request.method !== "POST") {
+    if (!ACCEPTED_METHODS.includes(request.method)) {
         return;
     }
     let url = new URL(request.url);
