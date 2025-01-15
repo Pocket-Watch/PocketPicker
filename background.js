@@ -41,9 +41,9 @@ function processRequest(request) {
     if (!MEDIA_EXTENSIONS.includes(extension)) {
         return;
     }
+    let tabDomain = new URL(request.documentUrl).host;
     let headers = request.requestHeaders;
-    let origin = null;
-    let referer = null;
+    let origin = null, referer = null;
     for (let i = 0; i < headers.length; i++) {
         let header = headers[i];
         if (header.name === "Origin") {
@@ -54,7 +54,7 @@ function processRequest(request) {
             referer = header.value;
         }
     }
-    let entry = new Entry(request.url, origin, referer);
+    let entry = new Entry(request.url, origin, referer, tabDomain);
     entryQueue.push(entry)
     console.log(entry)
 }
@@ -76,11 +76,12 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 class Entry {
-    constructor(url, origin, referer) {
+    constructor(url, origin, referer, tabDomain) {
         this.time = Date.now();
         this.url = url;
         this.origin = origin;
         this.referer = referer;
+        this.tabDomain = tabDomain;
     }
 }
 // For "webRequest.onBeforeRequest" headers are undefined even if "requestHeaders" is passed.

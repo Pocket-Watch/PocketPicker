@@ -8,6 +8,7 @@ console.log("FOREGROUND RUNNING!")
 const entriesTable = document.getElementById("entries");
 const clearButton = document.getElementById("clear");
 const refreshButton = document.getElementById("refresh");
+const insertButton = document.getElementById("insert");
 
 function createTableRow(entry) {
     let tableRow = document.createElement("tr");
@@ -55,6 +56,7 @@ function createTdWithInput(content) {
 
 const GET_ENTRIES = "get_entries";
 const CLEAR_ENTRIES = "clear_entries";
+const INSERT_ENTRIES = "insert_entries";
 
 function clearEntries() {
     browser.runtime.sendMessage({type: CLEAR_ENTRIES});
@@ -75,6 +77,20 @@ function getEntries() {
     });
 }
 
+function insertEntry() {
+    let dummyEntry = new Entry("https://example.com/vid.mp4", "Origin", "Referer");
+    // Now entries are consumed by the table and never stored in the foreground
+    // Also find a way to attach a button to each entry?
+    console.log("Sending dummy", dummyEntry);
+
+    // When a message is sent to a content script it must be sent through tabs.sendMessage()
+    // This will send to current tab anyway
+    browser.tabs.query({active: true, currentWindow: true}, function (tabs) {
+        let activeTab = tabs[0];
+        browser.tabs.sendMessage(activeTab.id, {type: INSERT_ENTRIES, entry: dummyEntry});
+    })
+}
+
 function clearTable() {
     // It is a live collection so it updates as you delete, and it gets angry
     // if you don't use - deleteRow(index), so removeChild() doesn't work
@@ -87,6 +103,7 @@ function clearTable() {
 function main() {
     clearButton.onclick = clearEntries;
     refreshButton.onclick = getEntries;
+    insertButton.onclick = insertEntry;
     getEntries()
 
     // This is a test entry to preview table formatting
@@ -96,6 +113,7 @@ function main() {
     ))*/
 }
 
+// Test entry
 class Entry {
     constructor(url, origin, referer) {
         this.time = Date.now();
