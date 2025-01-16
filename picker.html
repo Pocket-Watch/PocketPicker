@@ -10,7 +10,6 @@
     <h2>Pocket picker</h2>
     <button id="clear">Clear entries</button>
     <button id="refresh">Refresh</button>
-    <button id="insert">Insert</button>
     <table id="entries">
         <tr>
             <th>URL</th>
@@ -19,6 +18,10 @@
             <th>Time</th>
         </tr>
     </table>
+    <div id="context_menu" class="context-menu">
+        <div id="context_menu_insert" class="menu-item">Insert</div>
+        <div id="context_menu_delete" class="menu-item">Delete</div>
+    </div>
     <script src="picker.js"></script>
 </body>
 </html>

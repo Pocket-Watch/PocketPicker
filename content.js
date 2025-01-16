@@ -38,7 +38,9 @@ function performInsertions(entry) {
     success &= setText(refererBox, entry.referer);
 
     let proxyToggleDiv = getById("proxy_toggle");
-    success &= proxyToggleDiv != null;
+    if (!proxyToggleDiv) {
+        return false;
+    }
     if (!proxyToggleDiv.classList.contains("toggle_active")) {
         proxyToggleDiv.click()
     }

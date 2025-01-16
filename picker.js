@@ -8,11 +8,47 @@ console.log("FOREGROUND RUNNING!")
 const entriesTable = document.getElementById("entries");
 const clearButton = document.getElementById("clear");
 const refreshButton = document.getElementById("refresh");
-const insertButton = document.getElementById("insert");
+const contextMenu = document.getElementById("context_menu");
+
+function hideIfShown(element) {
+    if (element.style.display !== "none") {
+        element.style.display = "none";
+    }
+}
+
+function attachContextMenuLogic() {
+    document.addEventListener("click", _ => {
+        hideIfShown(contextMenu);
+    })
+
+    document.addEventListener("contextmenu", _ => {
+        hideIfShown(contextMenu);
+    })
+
+    let insertButton = contextMenu.querySelector('#context_menu_insert');
+    insertButton.addEventListener("click", _ => {
+        console.info("Sending", currentEntry, "to current tab")
+        sendEntryToCurrentTab(currentEntry)
+    })
+    let deleteButton = contextMenu.querySelector('#context_menu_delete');
+
+}
+
+let currentEntry = null;
+function attachContextMenu(element, entry) {
+    element.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        contextMenu.style.left = `${e.pageX}px`;
+        contextMenu.style.top = `${e.pageY}px`;
+        contextMenu.style.display = 'block';
+        currentEntry = entry;
+    });
+}
 
 function createTableRow(entry) {
     let tableRow = document.createElement("tr");
-
+    attachContextMenu(tableRow, entry);
     let urlData = createTdWithInput(entry.url);
     let refererData = createTdWithInput(entry.referer)
     let originData = createTdWithInput(entry.origin)
@@ -77,17 +113,12 @@ function getEntries() {
     });
 }
 
-function insertEntry() {
-    let dummyEntry = new Entry("https://example.com/vid.mp4", "Origin", "Referer");
-    // Now entries are consumed by the table and never stored in the foreground
-    // Also find a way to attach a button to each entry?
-    console.log("Sending dummy", dummyEntry);
-
+function sendEntryToCurrentTab(entry) {
     // When a message is sent to a content script it must be sent through tabs.sendMessage()
     // This will send to current tab anyway
     browser.tabs.query({active: true, currentWindow: true}, function (tabs) {
         let activeTab = tabs[0];
-        browser.tabs.sendMessage(activeTab.id, {type: INSERT_ENTRIES, entry: dummyEntry});
+        browser.tabs.sendMessage(activeTab.id, {type: INSERT_ENTRIES, entry: entry});
     })
 }
 
@@ -103,7 +134,6 @@ function clearTable() {
 function main() {
     clearButton.onclick = clearEntries;
     refreshButton.onclick = getEntries;
-    insertButton.onclick = insertEntry;
     getEntries()
 
     // This is a test entry to preview table formatting
@@ -111,6 +141,8 @@ function main() {
         "https://LONG-TEST-ENTRY-URL-TABLE-ROW/ROWS-ENTRY/domain",
         "Origin", "Referer"
     ))*/
+
+    attachContextMenuLogic()
 }
 
 // Test entry

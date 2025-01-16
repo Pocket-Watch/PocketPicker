@@ -46,3 +46,28 @@ th {
 tr:hover {
     background-color: rgba(20, 40, 50, 1);
 }
+
+.context-menu {
+    display: none;
+    position: absolute;
+    border-radius: 50%;
+    font-size: 16px;
+}
+
+.context-menu:hover {
+    cursor: pointer;
+}
+
+.menu-item {
+    background-color: black;
+    color: white;
+    border: 1px solid #ccc;
+    padding: 5px;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.menu-item:hover{
+    background-color: gray;
+}
+
