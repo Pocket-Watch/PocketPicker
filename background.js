@@ -28,7 +28,7 @@ if (isChromium) {
 
 let entryQueue = []
 
-function processRequest(request) {
+async function processRequest(request) {
     if (!ACCEPTED_METHODS.includes(request.method)) {
         return;
     }
@@ -41,20 +41,8 @@ function processRequest(request) {
     if (!MEDIA_EXTENSIONS.includes(extension)) {
         return;
     }
-    let tabId = request.tabId;
-    let headers = request.requestHeaders;
-    let origin = null, referer = null;
-    for (let i = 0; i < headers.length; i++) {
-        let header = headers[i];
-        if (header.name === "Origin") {
-            origin = header.value;
-            continue
-        }
-        if (header.name === "Referer") {
-            referer = header.value;
-        }
-    }
-    let entry = new Entry(request.url, origin, referer, tabId);
+
+    let entry = Entry.fromRequest(request);
     entryQueue.push(entry)
     console.log(entry)
 }
@@ -82,6 +70,23 @@ class Entry {
         this.origin = origin;
         this.referer = referer;
         this.tabId = tabId;
+    }
+
+    static fromRequest(request) {
+        let tabId = request.tabId;
+        let headers = request.requestHeaders;
+        let origin = null, referer = null;
+        for (let i = 0; i < headers.length; i++) {
+            let header = headers[i];
+            if (header.name === "Origin") {
+                origin = header.value;
+                continue
+            }
+            if (header.name === "Referer") {
+                referer = header.value;
+            }
+        }
+        return new Entry(request.url, origin, referer, tabId);
     }
 }
 // For "webRequest.onBeforeRequest" headers are undefined even if "requestHeaders" is passed.
