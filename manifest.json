@@ -9,6 +9,8 @@
   },
   "permissions": [
     "webRequest",
+    "webRequestBlocking",
+    "webRequestFilterResponse",
     "<all_urls>"
   ],
   "background": {

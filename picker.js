@@ -51,11 +51,11 @@ function createTableRow(entry) {
     attachContextMenu(tableRow, entry);
     let urlData = createTdWithInput(entry.url);
     let refererData = createTdWithInput(entry.referer)
-    let originData = createTdWithInput(entry.origin)
+    let extensionData = createTdWithInput(entry.extension)
     let secondsElapsed = Date.now() / 1000 - entry.time / 1000;
     let timeData = createTdWithInput(formatTime(secondsElapsed))
 
-    tableRow.append(urlData, refererData, originData, timeData)
+    tableRow.append(urlData, refererData, extensionData, timeData)
     entriesTable.appendChild(tableRow)
 }
 
@@ -145,13 +145,16 @@ function main() {
     attachContextMenuLogic()
 }
 
-// Test entry
+// Entry definition mirror
 class Entry {
-    constructor(url, origin, referer) {
+    constructor(url, origin, referer, tabId) {
         this.time = Date.now();
         this.url = url;
         this.origin = origin;
         this.referer = referer;
+        this.tabId = tabId;
+        this.extension = "";
+        this.metadata = null;
     }
 }
 
