@@ -3,7 +3,8 @@ console.log("Background worker started at", Date.now(), "!");
 
 const MEDIA_EXTENSIONS = ["mp4", "mp3", "mp2", "mov", "mkv", "webm", "m3u8", "m3u", "vtt", "srt"]
 const ACCEPTED_METHODS = ["GET", "POST", "HEAD"];
-const IGNORE_EXTENSIONLESS = true;
+const REQUIRE_EXTENSION = false;
+const SCAN_QUERY_PARAMS = true;
 var isChromium = false;
 
 // 'browser' is undefined in Chromium but in Firefox both 'chrome' and 'browser' are defined
@@ -36,13 +37,31 @@ async function processRequest(details) {
     }
     let url = new URL(details.url);
     let dot = url.pathname.lastIndexOf('.');
-    if (IGNORE_EXTENSIONLESS && dot === -1) {
+    let missingExt = dot === -1;
+    if (REQUIRE_EXTENSION && missingExt) {
         return;
     }
     let extension = url.pathname.substring(dot + 1)
-    if (!MEDIA_EXTENSIONS.includes(extension)) {
+    if (!missingExt && !MEDIA_EXTENSIONS.includes(extension)) {
         return;
     }
+
+    if (SCAN_QUERY_PARAMS && missingExt) {
+        let urlVal = url.searchParams.get("url");
+        if (!urlVal) {
+            return;
+        }
+        let paramURL = new URL(urlVal);
+        if (!paramURL) {
+            return;
+        }
+        let paramExt = getExtension(paramURL.pathname);
+        if (!MEDIA_EXTENSIONS.includes(paramExt)) {
+            return;
+        }
+        extension = paramExt;
+    }
+
 
     let entry = Entry.fromRequest(details);
     entry.extension = extension;
@@ -51,6 +70,12 @@ async function processRequest(details) {
     }
     entryQueue.push(entry)
     console.log(entry)
+}
+
+function getExtension(pathname) {
+    let slash = Math.max(pathname.lastIndexOf("/"), pathname.lastIndexOf("\\"));
+    let filename = pathname.substring(slash + 1);
+    return filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
 }
 
 const GET_ENTRIES = "get_entries";
@@ -70,8 +95,8 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function supplementMetadata(entry, requestId) {
-    // Can't monitor response neither in MV2 nor MV3
     if (isChromium) {
+        // Can't monitor response neither in MV2 nor MV3
         return;
     }
     console.log("Gathering additional metadata for requestId " + requestId);
