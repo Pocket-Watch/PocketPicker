@@ -47,21 +47,27 @@ async function processRequest(details) {
     }
 
     if (SCAN_QUERY_PARAMS && missingExt) {
-        let urlVal = url.searchParams.get("url");
-        if (!urlVal) {
+        let foundAny = false;
+        for (const [_, value] of url.searchParams) {
+            if (!value.startsWith("http")) {
+                continue;
+            }
+            let paramURL = new URL(value);
+            if (!paramURL) {
+                continue;
+            }
+            let paramExt = getExtension(paramURL.pathname);
+            if (!MEDIA_EXTENSIONS.includes(paramExt)) {
+                continue;
+            }
+            extension = paramExt;
+            foundAny = true;
+            break;
+        }
+        if (!foundAny) {
             return;
         }
-        let paramURL = new URL(urlVal);
-        if (!paramURL) {
-            return;
-        }
-        let paramExt = getExtension(paramURL.pathname);
-        if (!MEDIA_EXTENSIONS.includes(paramExt)) {
-            return;
-        }
-        extension = paramExt;
     }
-
 
     let entry = Entry.fromRequest(details);
     entry.extension = extension;
