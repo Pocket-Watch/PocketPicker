@@ -31,17 +31,17 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
 function performInsertions(entry) {
     let success = true;
-    let urlBox = getById("url_input_box");
+    let urlBox = getById("entry_url_input");
     success &= setText(urlBox, entry.url);
 
-    let refererBox = getById("url_dropdown_referer_input");
+    let refererBox = getById("entry_dropdown_referer_input");
     success &= setText(refererBox, entry.referer);
 
-    let proxyToggleDiv = getById("proxy_toggle");
+    let proxyToggleDiv = getById("entry_proxy_toggle");
     if (!proxyToggleDiv) {
         return false;
     }
-    if (!proxyToggleDiv.classList.contains("toggle_active")) {
+    if (!proxyToggleDiv.classList.contains("widget_toggle_active")) {
         proxyToggleDiv.click()
     }
     return success;
