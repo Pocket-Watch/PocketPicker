@@ -56,7 +56,14 @@ function createTableRow(entry) {
     let timeData = createTdWithInput(formatTime(secondsElapsed))
 
     tableRow.append(urlData, refererData, extensionData, timeData)
-    entriesTable.appendChild(tableRow)
+    // insertAfter doesn't exist so there's goofy, this basically inserts entries after table header
+    let secondChild = entriesTable.firstElementChild.nextSibling;
+    if (secondChild) {
+        entriesTable.insertBefore(tableRow, secondChild);
+    } else {
+        entriesTable.appendChild(tableRow);
+    }
+
 }
 
 function formatTime(seconds) {

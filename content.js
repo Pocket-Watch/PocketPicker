@@ -41,7 +41,7 @@ function performInsertions(entry) {
     if (!proxyToggleDiv) {
         return false;
     }
-    if (!proxyToggleDiv.classList.contains("widget_toggle_active")) {
+    if (!proxyToggleDiv.classList.contains("active")) {
         proxyToggleDiv.click()
     }
     return success;
@@ -53,7 +53,7 @@ function getById(id) {
 
 function setText(element, text) {
     if (element == null) {
-        logWarn("Element given is null, cannot insert text!");
+        logWarn("Given element is null, cannot insert text!");
         return false;
     }
     if (!(element instanceof HTMLElement)) {
