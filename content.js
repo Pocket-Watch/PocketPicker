@@ -30,7 +30,13 @@ browser.runtime.onMessage.addListener((message, sender) => {
 });
 
 function performInsertions(entry) {
+    if (entry.extension === "vtt" || entry.extension === "srt") {
+        let subtitleUrl = getById("entry_subtitle_url_input");
+        return setText(subtitleUrl, entry.url);
+    }
+
     let success = true;
+
     let urlBox = getById("entry_url_input");
     success &= setText(urlBox, entry.url);
 
@@ -44,6 +50,7 @@ function performInsertions(entry) {
     if (!proxyToggleDiv.classList.contains("active")) {
         proxyToggleDiv.click()
     }
+
     return success;
 }
 
