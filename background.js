@@ -74,6 +74,7 @@ async function processRequest(details) {
     if (!isChromium && extension.startsWith("m3u")) {
         await supplementMetadata(entry, details.requestId);
     }
+    entry.id = Number(details.requestId);
     entryQueue.push(entry)
     console.log(entry)
 }
@@ -86,18 +87,35 @@ function getExtension(pathname) {
 
 const GET_ENTRIES = "get_entries";
 const CLEAR_ENTRIES = "clear_entries";
+const DELETE_ENTRY = "delete_entry";
 
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === GET_ENTRIES) {
-        console.log(GET_ENTRIES, "- received from foreground");
-        sendResponse({entries: entryQueue});
-        return;
+    switch (message.type) {
+        case GET_ENTRIES:
+            console.log(GET_ENTRIES, "- received from foreground");
+            sendResponse({entries: entryQueue});
+            return
+
+        case CLEAR_ENTRIES:
+            console.log(CLEAR_ENTRIES, "- received from foreground");
+            entryQueue.length = 0;
+            return
+
+        case DELETE_ENTRY:
+            let id = message.id;
+            console.log(DELETE_ENTRY, "of id", id, "- received from foreground");
+            if (!Number.isInteger(id)) {
+                console.error("ID passed is not an int:", id);
+                return
+            }
+            for (let i = 0; i < entryQueue.length; i++) {
+                if (entryQueue[i].id === id) {
+                    entryQueue.splice(i, 1);
+                    sendResponse({index: i});
+                    break;
+                }
+            }
     }
-    if (message.type === CLEAR_ENTRIES) {
-        console.log(CLEAR_ENTRIES, "- received from foreground");
-        entryQueue.length = 0;
-    }
-    // entryQueue = [];
 });
 
 async function supplementMetadata(entry, requestId) {
@@ -179,6 +197,7 @@ class Entry {
         this.tabId = tabId;
         this.extension = "";
         this.metadata = null;
+        this.id = -1;
     }
 
     static fromRequest(request) {

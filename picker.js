@@ -31,10 +31,14 @@ function attachContextMenuLogic() {
         sendEntryToCurrentTab(currentEntry)
     })
     let deleteButton = contextMenu.querySelector('#context_menu_delete');
-
+    deleteButton.addEventListener("click", _ => {
+        console.info("Deleting", currentEntry)
+        deleteEntryById(currentEntry.id)
+    })
 }
 
 let currentEntry = null;
+
 function attachContextMenu(element, entry) {
     element.addEventListener('contextmenu', e => {
         e.preventDefault();
@@ -100,6 +104,7 @@ function createTdWithInput(content) {
 const GET_ENTRIES = "get_entries";
 const CLEAR_ENTRIES = "clear_entries";
 const INSERT_ENTRIES = "insert_entries";
+const DELETE_ENTRY = "delete_entry";
 
 function clearEntries() {
     browser.runtime.sendMessage({type: CLEAR_ENTRIES});
@@ -120,6 +125,13 @@ function getEntries() {
     });
 }
 
+function deleteEntryById(id) {
+    browser.runtime.sendMessage({type: DELETE_ENTRY, id: id}, (response) => {
+        console.log("Received index: ", response.index)
+        deleteRowAt(response.index, true)
+    });
+}
+
 function sendEntryToCurrentTab(entry) {
     // When a message is sent to a content script it must be sent through tabs.sendMessage()
     // This will send to current tab anyway
@@ -136,6 +148,19 @@ function clearTable() {
     while (rows.length > 1) {
         entriesTable.deleteRow(rows.length - 1);
     }
+}
+
+function deleteRowAt(index, reversed) {
+    let rows = entriesTable.getElementsByTagName("tr");
+    if (index >= rows.length) {
+        return
+    }
+    if (reversed) {
+        index = rows.length-1 - index;
+    } else {
+        index++;
+    }
+    entriesTable.deleteRow(index);
 }
 
 function main() {
@@ -162,6 +187,7 @@ class Entry {
         this.tabId = tabId;
         this.extension = "";
         this.metadata = null;
+        this.id = -1;
     }
 }
 
