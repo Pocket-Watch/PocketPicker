@@ -1,9 +1,8 @@
 console.log("Background worker started at", Date.now(), "!");
 
 
-const MEDIA_EXTENSIONS = ["mp4", "mp3", "mp2", "mov", "mkv", "webm", "m3u8", "m3u", "vtt", "srt"]
+const MEDIA_EXTENSIONS = ["mp4", "mp3", "mp2", "mov", "mkv", "webm", "m3u8", "m3u", "vtt", "srt", "aac", "avi", "ogg"]
 const ACCEPTED_METHODS = ["GET", "POST", "HEAD"];
-const REQUIRE_EXTENSION = false;
 const SCAN_QUERY_PARAMS = true;
 var isChromium = false;
 
@@ -20,15 +19,29 @@ if (isChromium) {
         { urls: ["<all_urls>"] },
         ["requestHeaders", "extraHeaders"]
     );
+    chrome.webRequest.onHeadersReceived.addListener(processResponse,
+        { urls: ["<all_urls>"] },
+        ["responseHeaders", "extraHeaders"]
+    );
+    chrome.webRequest.onErrorOccurred.addListener(processError,
+        { urls: ["<all_urls>"] },
+    );
 } else {
     browser.webRequest.onBeforeSendHeaders.addListener(processRequest,
         { urls: ["<all_urls>"] },
-        // blocking is passed here because webRequestBlocking is not enough to filterResponseData
-        ["requestHeaders", "blocking"]
+        ["requestHeaders"]
+    );
+    browser.webRequest.onHeadersReceived.addListener(processResponse,
+        { urls: ["<all_urls>"] },
+        // blocking may have to be passed here if we need to fetch from cache
+        ["responseHeaders"]
+    );
+    browser.webRequest.onErrorOccurred.addListener(processError,
+        { urls: ["<all_urls>"] },
     );
 }
 
-
+let requestMap = new Map();
 let entryQueue = []
 
 async function processRequest(details) {
@@ -36,16 +49,13 @@ async function processRequest(details) {
         return;
     }
     let url = new URL(details.url);
-    let dot = url.pathname.lastIndexOf('.');
-    let missingExt = dot === -1;
-    if (REQUIRE_EXTENSION && missingExt) {
-        return;
-    }
-    let extension = url.pathname.substring(dot + 1)
+    let extension = getExtension(url.pathname);
+    let missingExt = extension.length === 0;
     if (!missingExt && !MEDIA_EXTENSIONS.includes(extension)) {
         return;
     }
 
+    let entry = Entry.fromRequest(details);
     if (SCAN_QUERY_PARAMS && missingExt) {
         let foundAny = false;
         for (const [_, value] of url.searchParams) {
@@ -65,28 +75,114 @@ async function processRequest(details) {
             break;
         }
         if (!foundAny) {
+            // Wait for response headers to determine extension by mime type
+            requestMap.set(entry.id, entry);
             return;
         }
     }
 
-    let entry = Entry.fromRequest(details);
     entry.extension = extension;
-    if (!isChromium && extension.startsWith("m3u")) {
-        await supplementMetadata(entry, details.requestId);
-    }
-    entry.id = Number(details.requestId);
+    /*if (extension.startsWith("m3u")) {
+        // TODO, use fetch to extract metadata from response
+    }*/
     entryQueue.push(entry)
     console.log(entry)
 }
 
+async function processResponse(details) {
+    if (requestMap.size === 0) {
+        return
+    }
+    let id = Number(details.requestId);
+    let entry = requestMap.get(id);
+    if (!entry) {
+        return
+    }
+    requestMap.delete(id)
+    let code = details.statusCode;
+    if (code < 200 || code >= 300) {
+        // Will this fire again on redirects?
+        return
+    }
+    let contentType = null;
+    let headers = details.responseHeaders;
+    for (let i = 0; i < headers.length; i++) {
+        let header = headers[i];
+        if (header.name === "content-type") {
+            contentType = header.value;
+            break
+        }
+    }
+    if (!contentType) {
+        return
+    }
+    // Cut Content-Type at semicolon?
+    let extension = "";
+    switch (contentType) {
+        case "video/mp4":
+            extension = "mp4";
+            break;
+        case "audio/mp3":
+            extension = "mp3";
+            break;
+        case "application/vnd.apple.mpegurl":
+            extension = "m3u8";
+            break;
+        case "video/mpeg":
+            extension = "mpeg";
+            break;
+    }
+    if (extension.length > 0) {
+        entry.extension = extension;
+        // Chronological order insert
+        console.log("entryQueue.length", entryQueue.length);
+        let insertAt = entryQueue.length;
+        for (let i = insertAt - 1; i >= 0; i--) {
+            let e = entryQueue[i];
+            if (e.time < entry.time) {
+                insertAt = i + 1;
+                break;
+            }
+        }
+        console.log("Adding entry by mime type:", entry)
+        entryQueue.splice(insertAt, 0, entry);
+    }
+}
+
+// Prevent memory leaks by processing errors or clean up by timestamp
+async function processError(details) {
+    if (requestMap.size === 0) {
+        return
+    }
+    let id = Number(details.requestId);
+    let entry = requestMap.get(id);
+    if (!entry) {
+        return
+    }
+    requestMap.delete(id)
+}
+
 function getExtension(pathname) {
-    let slash = Math.max(pathname.lastIndexOf("/"), pathname.lastIndexOf("\\"));
-    let filename = pathname.substring(slash + 1);
-    return filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+    let end = pathname.length;
+    for (let i = end - 1; i >= 0; i--) {
+        if (pathname[i] === '/') {
+            end = i;
+        } else break;
+    }
+    for (let i = end-1; i >= 0; i--) {
+        switch (pathname[i]) {
+            case '.':
+                return pathname.substring(i+1, end).toLowerCase();
+            case '/':
+                return ""
+        }
+    }
+    return "";
 }
 
 const GET_ENTRIES = "get_entries";
 const CLEAR_ENTRIES = "clear_entries";
+const UPDATE_ENTRIES = "update_entries";
 const DELETE_ENTRY = "delete_entry";
 
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -117,35 +213,6 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
     }
 });
-
-async function supplementMetadata(entry, requestId) {
-    if (isChromium) {
-        // Can't monitor response neither in MV2 nor MV3
-        return;
-    }
-    console.log("Gathering additional metadata for requestId " + requestId);
-
-    const decoder = new TextDecoder("utf-8"); // Specify the encoding
-    let payload = "";
-
-    let filter = browser.webRequest.filterResponseData(requestId);
-    filter.ondata = (event) => {
-        filter.write(event.data);
-        // For now just the first read
-        if (!payload) {
-            payload = decoder.decode(event.data);
-        }
-    };
-    filter.onstop = (_) => {
-        // disconnect() - just in case any remaining response data is left.
-        filter.disconnect();
-        let metadata = parseM3U8Metadata(payload);
-        if (metadata) {
-            console.log(metadata)
-            entry.metadata = metadata;
-        }
-    };
-}
 
 const EXTM3U = "#EXTM3U"
 const STREAM_INFO = "#EXT-X-STREAM-INF"
@@ -189,15 +256,15 @@ class Metadata {
 }
 
 class Entry {
-    constructor(url, origin, referer, tabId) {
+    constructor(id, url, origin, referer, tabId) {
         this.time = Date.now();
+        this.id = id;
         this.url = url;
         this.origin = origin;
         this.referer = referer;
         this.tabId = tabId;
         this.extension = "";
         this.metadata = null;
-        this.id = -1;
     }
 
     static fromRequest(request) {
@@ -214,7 +281,7 @@ class Entry {
                 referer = header.value;
             }
         }
-        return new Entry(request.url, origin, referer, tabId);
+        return new Entry(Number(request.requestId), request.url, origin, referer, tabId);
     }
 }
 // For "webRequest.onBeforeRequest" headers are undefined even if "requestHeaders" is passed.
