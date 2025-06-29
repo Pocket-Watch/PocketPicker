@@ -1,7 +1,7 @@
 console.log("Background worker started at", Date.now(), "!");
 
 
-const MEDIA_EXTENSIONS = ["mp4", "mp3", "mp2", "mov", "mkv", "webm", "m3u8", "m3u", "vtt", "srt", "aac", "avi", "ogg"]
+const MEDIA_EXTENSIONS = ["mp4", "mp3", "mp2", "mov", "mkv", "webm", "m3u8", "m3u", "txt", "vtt", "srt", "aac", "avi", "ogg"]
 const ACCEPTED_METHODS = ["GET", "POST", "HEAD"];
 const SCAN_QUERY_PARAMS = true;
 var isChromium = false;
