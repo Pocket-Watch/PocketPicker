@@ -183,6 +183,7 @@ function getExtension(pathname) {
 const GET_ENTRIES = "get_entries";
 const CLEAR_ENTRIES = "clear_entries";
 const UPDATE_ENTRIES = "update_entries";
+const DEDUPLICATE_ENTRIES = "deduplicate_entries";
 const DELETE_ENTRY = "delete_entry";
 
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -211,6 +212,20 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     break;
                 }
             }
+            return
+        case DEDUPLICATE_ENTRIES:
+            let urlSet = new Set();
+            let uniqueEntries = [];
+            for (let i = 0; i < entryQueue.length; i++) {
+                let entry = entryQueue[i];
+                if (!urlSet.has(entry.url)) {
+                    urlSet.add(entry.url);
+                    uniqueEntries.push(entry)
+                }
+            }
+            entryQueue = uniqueEntries;
+            sendResponse({entries: entryQueue});
+            return
     }
 });
 

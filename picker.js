@@ -8,6 +8,7 @@ console.log("FOREGROUND RUNNING!")
 const entriesTable = document.getElementById("entries");
 const clearButton = document.getElementById("clear");
 const refreshButton = document.getElementById("refresh");
+const deduplicateButton = document.getElementById("deduplicate");
 const contextMenu = document.getElementById("context_menu");
 
 function hideIfShown(element) {
@@ -104,6 +105,7 @@ function createTdWithInput(content) {
 const GET_ENTRIES = "get_entries";
 const CLEAR_ENTRIES = "clear_entries";
 const INSERT_ENTRIES = "insert_entries";
+const DEDUPLICATE_ENTRIES = "deduplicate_entries";
 const DELETE_ENTRY = "delete_entry";
 
 function clearEntries() {
@@ -119,6 +121,20 @@ function getEntries() {
             return;
         }
         console.log("Background responded with entries:", entries);
+        for (let i = 0; i < entries.length; i++) {
+            createTableRow(entries[i])
+        }
+    });
+}
+
+function deduplicateEntries() {
+    clearTable();
+    browser.runtime.sendMessage({type: DEDUPLICATE_ENTRIES}, (response) => {
+        let entries = response.entries;
+        if (entries.length === 0) {
+            return;
+        }
+        console.log("Background responded with deduplicated entries:", entries);
         for (let i = 0; i < entries.length; i++) {
             createTableRow(entries[i])
         }
@@ -166,6 +182,7 @@ function deleteRowAt(index, reversed) {
 function main() {
     clearButton.onclick = clearEntries;
     refreshButton.onclick = getEntries;
+    deduplicateButton.onclick = deduplicateEntries;
     getEntries()
 
     // This is a test entry to preview table formatting
