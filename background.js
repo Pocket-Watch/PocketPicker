@@ -272,6 +272,9 @@ class Metadata {
 
 class Entry {
     constructor(id, url, origin, referer, tabId) {
+        if (!referer && origin) {
+            referer = origin + "/";
+        }
         this.time = Date.now();
         this.id = id;
         this.url = url;
