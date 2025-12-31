@@ -3,7 +3,6 @@ console.log("Background worker started at", Date.now(), "!");
 
 const MEDIA_EXTENSIONS = ["mp4", "mp3", "mp2", "mov", "mkv", "webm", "m3u8", "m3u", "txt", "vtt", "srt", "aac", "avi", "ogg", "mpd"]
 const ACCEPTED_METHODS = ["GET", "POST", "HEAD"];
-const SCAN_QUERY_PARAMS = true;
 var isChromium = false;
 
 // 'browser' is undefined in Chromium but in Firefox both 'chrome' and 'browser' are defined
@@ -56,29 +55,9 @@ async function processRequest(details) {
     }
 
     let entry = Entry.fromRequest(details);
-    if (SCAN_QUERY_PARAMS && missingExt) {
-        let foundAny = false;
-        for (const [_, value] of url.searchParams) {
-            if (!value.startsWith("http")) {
-                continue;
-            }
-            let paramURL = new URL(value);
-            if (!paramURL) {
-                continue;
-            }
-            let paramExt = getExtension(paramURL.pathname);
-            if (!MEDIA_EXTENSIONS.includes(paramExt)) {
-                continue;
-            }
-            extension = paramExt;
-            foundAny = true;
-            break;
-        }
-        if (!foundAny) {
-            // Wait for response headers to determine extension by mime type
-            requestMap.set(entry.id, entry);
-            return;
-        }
+    if (missingExt) {
+        requestMap.set(entry.id, entry);
+        return;
     }
 
     entry.extension = extension;
@@ -116,20 +95,23 @@ async function processResponse(details) {
     if (!contentType) {
         return
     }
-    // Cut Content-Type at semicolon?
+    let semicolon = contentType.indexOf(';');
+    if (semicolon > 0) {
+        contentType = contentType.substring(0, semicolon);
+    }
     let extension = "";
     switch (contentType) {
         case "video/mp4":
             extension = "mp4";
+            break;
+        case "video/mpeg":
+            extension = "mpeg";
             break;
         case "audio/mp3":
             extension = "mp3";
             break;
         case "application/vnd.apple.mpegurl":
             extension = "m3u8";
-            break;
-        case "video/mpeg":
-            extension = "mpeg";
             break;
     }
     if (extension.length > 0) {
