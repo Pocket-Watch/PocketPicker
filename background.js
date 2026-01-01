@@ -273,11 +273,11 @@ class Entry {
         let origin = null, referer = null;
         for (let i = 0; i < headers.length; i++) {
             let header = headers[i];
-            if (header.name === "Origin") {
+            if (header.name === "Origin" && header.value !== "null") {
                 origin = header.value;
                 continue
             }
-            if (header.name === "Referer") {
+            if (header.name === "Referer" && header.value !== "null") {
                 referer = header.value;
             }
         }
