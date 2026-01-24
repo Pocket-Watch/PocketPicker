@@ -12,6 +12,5 @@ OUT="PocketPicker-v${version}.zip"
 # Files/dirs to include
 INCLUDE=(icons background.js content.js manifest.json picker.css picker.html picker.js)
 
-zip -r "$OUT" "${Include[@]}"
-
+zip -r "$OUT" "${INCLUDE[@]}"
 echo "Created: $OUT"
