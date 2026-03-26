@@ -4,12 +4,15 @@ console.log("Background worker started at", Date.now(), "!");
 const MEDIA_EXTENSIONS = ["mp4", "mp3", "mp2", "mov", "mkv", "webm", "m3u8", "m3u", "txt", "vtt", "srt", "aac", "avi", "ogg", "mpd", "m4s"]
 const ACCEPTED_METHODS = ["GET", "POST", "HEAD"];
 var isChromium = false;
+var isMV3 = false;
 
 // 'browser' is undefined in Chromium but in Firefox both 'chrome' and 'browser' are defined
 if (typeof browser === "undefined") {
     isChromium = true;
     browser = chrome;
 }
+
+isMV3 = browser.runtime.getManifest().manifest_version === 3;
 
 // Should only listen selectively, instead of always in the background - removeListener
 if (isChromium) {
@@ -43,6 +46,27 @@ if (isChromium) {
 let requestMap = new Map();
 let entryQueue = []
 
+// MV3 service workers can be terminated at any time, so persist state to storage.session
+function saveState() {
+    if (!isMV3) return;
+    chrome.storage.session.set({
+        entryQueue: entryQueue,
+        requestMap: Array.from(requestMap.entries()),
+    });
+}
+
+// Restore state when the service worker wakes up (no-op on MV2, storage won't exist)
+if (isMV3) {
+    chrome.storage.session.get(["entryQueue", "requestMap"], (result) => {
+        if (result.entryQueue) {
+            entryQueue = result.entryQueue;
+        }
+        if (result.requestMap) {
+            requestMap = new Map(result.requestMap);
+        }
+    });
+}
+
 async function processRequest(details) {
     if (!ACCEPTED_METHODS.includes(details.method)) {
         return;
@@ -57,6 +81,7 @@ async function processRequest(details) {
     let entry = Entry.fromRequest(details);
     if (missingExt) {
         requestMap.set(entry.id, entry);
+        saveState();
         return;
     }
 
@@ -65,6 +90,7 @@ async function processRequest(details) {
         // TODO, use fetch to extract metadata from response
     }*/
     entryQueue.push(entry)
+    saveState();
     console.log(entry)
 }
 
@@ -78,6 +104,7 @@ async function processResponse(details) {
         return
     }
     requestMap.delete(id)
+    saveState();
     let code = details.statusCode;
     if (code < 200 || code >= 300) {
         // Will this fire again on redirects?
@@ -128,6 +155,7 @@ async function processResponse(details) {
         }
         console.log("Adding entry by mime type:", entry)
         entryQueue.splice(insertAt, 0, entry);
+        saveState();
     }
 }
 
@@ -142,6 +170,7 @@ async function processError(details) {
         return
     }
     requestMap.delete(id)
+    saveState();
 }
 
 function getExtension(pathname) {
@@ -178,6 +207,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case CLEAR_ENTRIES:
             console.log(CLEAR_ENTRIES, "- received from foreground");
             entryQueue.length = 0;
+            saveState();
             return
 
         case DELETE_ENTRY:
@@ -190,6 +220,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
             for (let i = 0; i < entryQueue.length; i++) {
                 if (entryQueue[i].id === id) {
                     entryQueue.splice(i, 1);
+                    saveState();
                     sendResponse({index: i});
                     break;
                 }
@@ -206,6 +237,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 }
             }
             entryQueue = uniqueEntries;
+            saveState();
             sendResponse({entries: entryQueue});
             return
     }
