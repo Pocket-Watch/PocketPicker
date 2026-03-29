@@ -15,6 +15,14 @@ It'll integrate nicely into Pocket Watch by sending a request to the preconfigur
 3. Press "Load unpacked" button
 4. Select extension root directory
 
+## Loading extensions for testing in Safari
+1. Open Safari
+2. Select "Safari" from the Apple menu bar then "Settings..."
+3. Navigate to the "Developer" tab
+4. Click "Add Temporary Extension" button at the bottom
+5. Enter your password in the prompt
+6. Select the extension's root directory
+
 ## Publishing extension in Mozilla
 1. If there's an existing version, ensure `"version"` is updated in `manifest.json`
 2. Zip up the extension folder, delete garbage like `README`, `LICENSE`, `.git`, `.gitignore`
