@@ -7,22 +7,73 @@
     <link rel="stylesheet" href="picker.css">
 </head>
 <body>
-    <h2>Pocket picker</h2>
-    <button id="clear">Clear entries</button>
-    <button id="refresh">Refresh</button>
-    <button id="deduplicate">Deduplicate</button>
-    <table id="entries">
-        <tr>
-            <th>URL</th>
-            <th>Referer</th>
-            <th>Extension</th>
-            <th>Time</th>
-        </tr>
-    </table>
-    <div id="context_menu" class="context-menu">
-        <div id="context_menu_insert" class="menu-item">Insert</div>
-        <div id="context_menu_delete" class="menu-item">Delete</div>
+    <div id="header">
+        <div id="header_title">
+            <svg><use href="icons.svg#video"/></svg>
+            <span>PocketPicker</span>
+        </div>
+        <div id="header_buttons">
+            <button id="refresh" class="header_button" title="Refresh entries">
+                <svg><use href="icons.svg#retry"/></svg>
+            </button>
+            <button id="deduplicate" class="header_button" title="Deduplicate entries">
+                <svg><use href="icons.svg#copy"/></svg>
+            </button>
+            <button id="clear" class="header_button header_button_danger" title="Clear all entries">
+                <svg><use href="icons.svg#delete"/></svg>
+            </button>
+        </div>
     </div>
+
+    <div id="search_root">
+        <div id="search_icon">
+            <svg><use href="icons.svg#search"/></svg>
+        </div>
+        <input id="search_input" type="text" placeholder="Search entries..."/>
+    </div>
+
+    <div id="entry_list_root">
+        <div id="empty_state" class="hide">
+            <svg><use href="icons.svg#history"/></svg>
+            <span>No entries yet</span>
+            <span class="empty_hint">Browse to a page with media to capture URLs</span>
+        </div>
+        <div id="entry_list">
+            <!-- NOTE: Entry cards are dynamically generated in picker.js -->
+        </div>
+    </div>
+
+    <div id="entry_footer">
+        <span>Currently</span>
+        <span id="entry_count">0</span>
+        <span>entries captured</span>
+    </div>
+
+    <div id="context_menu" class="context_menu">
+        <div id="context_menu_insert" class="context_menu_item">
+            <span>Insert</span>
+            <svg><use href="icons.svg#play"/></svg>
+        </div>
+        <hr class="context_menu_separator">
+        <div id="context_menu_copy_url" class="context_menu_item">
+            <span>Copy URL</span>
+            <svg><use href="icons.svg#copy"/></svg>
+        </div>
+        <div id="context_menu_copy_referer" class="context_menu_item">
+            <span>Copy Referer</span>
+            <svg><use href="icons.svg#copy"/></svg>
+        </div>
+        <div id="context_menu_expand" class="context_menu_item">
+            <span id="context_menu_expand_text">Expand</span>
+            <svg><use href="icons.svg#dropdown"/></svg>
+        </div>
+        <hr class="context_menu_separator">
+        <div id="context_menu_delete" class="context_menu_item">
+            <span>Delete</span>
+            <svg><use href="icons.svg#delete"/></svg>
+        </div>
+    </div>
+
     <script src="picker.js"></script>
 </body>
 </html>
