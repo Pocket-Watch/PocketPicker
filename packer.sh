@@ -10,7 +10,7 @@ if [ -z "$version" ]; then
     exit 2
 fi
 
-COMMON=(icons background.js content.js picker.css picker.html picker.js)
+COMMON=(icons icons.svg background.js content.js picker.css picker.html picker.js)
 
 if [ "$mv" = "-mv3" ] || [ "$mv" = "--manifest-version-3" ]; then
     echo "Packing the extension with manifest version 3"
