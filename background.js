@@ -1,47 +1,53 @@
 console.log("Background worker started at", Date.now(), "!");
 
-
 const MEDIA_EXTENSIONS = ["mp4", "mp3", "mp2", "mov", "mkv", "webm", "m3u8", "m3u", "txt", "vtt", "srt", "aac", "avi", "ogg", "mpd", "m4s"]
 const ACCEPTED_METHODS = ["GET", "POST", "HEAD"];
-var isChromium = false;
-var isMV3 = false;
 
-// 'browser' is undefined in Chromium but in Firefox both 'chrome' and 'browser' are defined
+// Chrome support for the 'browser' namespace was introduced in Chrome 152.
 if (typeof browser === "undefined") {
-    isChromium = true;
     browser = chrome;
 }
 
-isMV3 = browser.runtime.getManifest().manifest_version === 3;
+function userAgentBrowserName() {
+    const ua = navigator.userAgent;
 
-// Should only listen selectively, instead of always in the background - removeListener
-if (isChromium) {
-    // Chromium considers headers to be 'extra' so 'extraHeaders' is necessary to read them
-    chrome.webRequest.onBeforeSendHeaders.addListener(processRequest,
-        { urls: ["<all_urls>"] },
-        ["requestHeaders", "extraHeaders"]
-    );
-    chrome.webRequest.onHeadersReceived.addListener(processResponse,
-        { urls: ["<all_urls>"] },
-        ["responseHeaders", "extraHeaders"]
-    );
-    chrome.webRequest.onErrorOccurred.addListener(processError,
-        { urls: ["<all_urls>"] },
-    );
-} else {
-    browser.webRequest.onBeforeSendHeaders.addListener(processRequest,
-        { urls: ["<all_urls>"] },
-        ["requestHeaders"]
-    );
-    browser.webRequest.onHeadersReceived.addListener(processResponse,
-        { urls: ["<all_urls>"] },
-        // blocking may have to be passed here if we need to fetch from cache
-        ["responseHeaders"]
-    );
-    browser.webRequest.onErrorOccurred.addListener(processError,
-        { urls: ["<all_urls>"] },
-    );
+    let nameIndex = ua.lastIndexOf("Chrome/");
+    if (nameIndex !== -1) return "Chromium";
+
+    nameIndex = ua.lastIndexOf("Firefox/");
+    if (nameIndex !== -1) return "Firefox";
+
+    nameIndex = ua.lastIndexOf("Version/");
+    if (nameIndex !== -1) return "Safari";
+
+    return "Unknown";
 }
+
+// There's no single reliable way to detect Chromium
+let isChromium = userAgentBrowserName() === "Chromium";
+let isMV3 = browser.runtime.getManifest().manifest_version === 3;
+
+let requestSpec = ["requestHeaders"];
+let responseSpec = ["responseHeaders"];
+if (isChromium) {
+    requestSpec.push("extraHeaders");
+    responseSpec.push("extraHeaders");
+}
+
+console.log("Listening with", requestSpec, "and", responseSpec);
+
+// TODO: Listen selectively, removeListener when inactive
+browser.webRequest.onBeforeSendHeaders.addListener(processRequest,
+    { urls: ["<all_urls>"] },
+    requestSpec
+);
+browser.webRequest.onHeadersReceived.addListener(processResponse,
+    { urls: ["<all_urls>"] },
+    responseSpec
+);
+browser.webRequest.onErrorOccurred.addListener(processError,
+    { urls: ["<all_urls>"] },
+);
 
 let requestMap = new Map();
 let entryQueue = []
@@ -110,15 +116,7 @@ async function processResponse(details) {
         // Will this fire again on redirects?
         return
     }
-    let contentType = null;
-    let headers = details.responseHeaders;
-    for (let i = 0; i < headers.length; i++) {
-        let header = headers[i];
-        if (header.name === "content-type") {
-            contentType = header.value;
-            break
-        }
-    }
+    let contentType = getHeaderValue(details.responseHeaders, "content-type");
     if (!contentType) {
         return
     }
@@ -277,6 +275,16 @@ function parseM3U8Metadata(content) {
     return new Metadata(isMaster ? "MASTER" : "VOD/LIVE", qualities);
 }
 
+function getHeaderValue(headers, name) {
+    for (let i = 0; i < headers.length; i++) {
+        let header = headers[i];
+        if (header.name === name && header.value !== "null") {
+            return header.value;
+        }
+    }
+    return null;
+}
+
 class Metadata {
     constructor(type, ...qualities) {
         this.type = type; // VOD or MASTER or LIVE
@@ -302,17 +310,8 @@ class Entry {
     static fromRequest(request) {
         let tabId = request.tabId;
         let headers = request.requestHeaders;
-        let origin = null, referer = null;
-        for (let i = 0; i < headers.length; i++) {
-            let header = headers[i];
-            if (header.name === "Origin" && header.value !== "null") {
-                origin = header.value;
-                continue
-            }
-            if (header.name === "Referer" && header.value !== "null") {
-                referer = header.value;
-            }
-        }
+        let origin = getHeaderValue(headers, "Origin");
+        let referer = getHeaderValue(headers, "Referer");
         return new Entry(Number(request.requestId), request.url, origin, referer, tabId);
     }
 }
