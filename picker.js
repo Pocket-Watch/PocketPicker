@@ -1,33 +1,79 @@
 // ===========================================================================================
 // PocketPicker - Foreground popup logic
-// Card-based entry layout matching PocketWatch playlist/history style
 // ===========================================================================================
 
 if (typeof browser === "undefined") {
     browser = chrome;
 }
 
-console.log("FOREGROUND RUNNING!")
+// ---------------------------------------------------------------------------------------------
+// DOM helpers
+// ---------------------------------------------------------------------------------------------
+
+function getById(id) {
+    return document.getElementById(id);
+}
+
+function div(className, textContent) {
+    let element = document.createElement("div");
+    element.className = className;
+    if (textContent) element.textContent = textContent;
+    return element;
+}
+
+function span(className, textContent) {
+    let element = document.createElement("span");
+    element.className = className;
+    if (textContent) element.textContent = textContent;
+    return element;
+}
+
+function button(className, title) {
+    let element = document.createElement("button");
+    element.className = className;
+    if (title) element.title = title;
+    return element;
+}
+
+function readOnlyInput(className, value) {
+    let element = document.createElement("input");
+    element.className = className;
+    element.readOnly = true;
+    element.value = value;
+    element.title = value;
+    return element;
+}
+
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+
+// Creates an <svg> element that renders a symbol from icons.svg
+function makeSvg(iconId) {
+    let svgElement = document.createElementNS(SVG_NAMESPACE, "svg");
+    let useElement = document.createElementNS(SVG_NAMESPACE, "use");
+    useElement.setAttribute("href", "icons.svg#" + iconId);
+    svgElement.appendChild(useElement);
+    return svgElement;
+}
 
 // ---------------------------------------------------------------------------------------------
 // DOM references
 // ---------------------------------------------------------------------------------------------
 
-const entryList         = document.getElementById("entry_list");
-const emptyState        = document.getElementById("empty_state");
-const entryCount        = document.getElementById("entry_count");
-const clearButton       = document.getElementById("clear");
-const refreshButton     = document.getElementById("refresh");
-const deduplicateButton = document.getElementById("deduplicate");
-const searchInput       = document.getElementById("search_input");
-const contextMenu       = document.getElementById("context_menu");
+const entryList         = getById("entry_list");
+const emptyState        = getById("empty_state");
+const entryCount        = getById("entry_count");
+const clearButton       = getById("clear");
+const refreshButton     = getById("refresh");
+const deduplicateButton = getById("deduplicate");
+const searchInput       = getById("search_input");
+const contextMenu       = getById("context_menu");
 
-const contextMenuInsert      = document.getElementById("context_menu_insert");
-const contextMenuCopyUrl     = document.getElementById("context_menu_copy_url");
-const contextMenuCopyReferer  = document.getElementById("context_menu_copy_referer");
-const contextMenuExpand       = document.getElementById("context_menu_expand");
-const contextMenuExpandText   = document.getElementById("context_menu_expand_text");
-const contextMenuDelete       = document.getElementById("context_menu_delete");
+const contextMenuInsert      = getById("context_menu_insert");
+const contextMenuCopyUrl     = getById("context_menu_copy_url");
+const contextMenuCopyReferer = getById("context_menu_copy_referer");
+const contextMenuExpand      = getById("context_menu_expand");
+const contextMenuExpandText  = getById("context_menu_expand_text");
+const contextMenuDelete      = getById("context_menu_delete");
 
 // ---------------------------------------------------------------------------------------------
 // State
@@ -39,19 +85,9 @@ let currentEntryEl = null;
 let expandedEntryEl = null;
 
 const DROPDOWN_REMOVE_DELAY = 300;
-
-// ---------------------------------------------------------------------------------------------
-// SVG helper — creates an <svg><use href="icons.svg#..."/></svg> element
-// This mirrors PocketWatch's approach: <svg><use href="svg/main_icons.svg#play"/></svg>
-// ---------------------------------------------------------------------------------------------
-
-function makeSvg(iconId) {
-    let svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    let useEl = document.createElementNS("http://www.w3.org/2000/svg", "use");
-    useEl.setAttribute("href", "icons.svg#" + iconId);
-    svgEl.appendChild(useEl);
-    return svgEl;
-}
+const COPY_FEEDBACK_DELAY = 1200;
+const CONTEXT_MENU_WIDTH = 150;
+const CONTEXT_MENU_HEIGHT = 160;
 
 // ---------------------------------------------------------------------------------------------
 // Media type classification
@@ -65,10 +101,10 @@ const MEDIA_TYPES = {
 };
 
 function getMediaTypeInfo(extension) {
-    for (const [type, exts] of Object.entries(MEDIA_TYPES)) {
-        if (exts.includes(extension)) {
-            // iconKey must match the symbol id in icons.svg
-            // ("subtitle" type maps to "subtitles" symbol, "stream" type maps to "tv" symbol)
+    for (const [type, extensions] of Object.entries(MEDIA_TYPES)) {
+        if (extensions.includes(extension)) {
+            // iconKey must match a symbol id in icons.svg
+            // "subtitle" maps to the "subtitles" symbol, "stream" maps to the "tv" symbol
             let iconKey = type;
             if (type === "subtitle") iconKey = "subtitles";
             if (type === "stream")   iconKey = "tv";
@@ -122,263 +158,230 @@ function extractFilename(url) {
 // Entry card creation
 // ---------------------------------------------------------------------------------------------
 
-function createEntryCard(entry) {
-    let entryEl = document.createElement("div");
-    let mediaInfo = getMediaTypeInfo(entry.extension);
-    entryEl.className = "entry type-" + mediaInfo.type;
-
-    let top = document.createElement("div");
-    top.className = "entry_top";
-
-    // Thumbnail with media-type icon + hover play overlay
-    let thumbnail = document.createElement("div");
-    thumbnail.className = "entry_thumbnail";
+function createEntryThumbnail(entry, mediaInfo) {
+    let thumbnail = div("entry_thumbnail");
     thumbnail.title = "Insert into current tab";
 
-    let iconSvg = makeSvg(mediaInfo.iconKey);
-    iconSvg.classList.add("thumbnail_icon");
+    let typeIcon = makeSvg(mediaInfo.iconKey);
+    typeIcon.classList.add("thumbnail_icon");
+    thumbnail.appendChild(typeIcon);
 
-    let playSvg = makeSvg("thumbnail_play");
-    playSvg.classList.add("thumbnail_overlay");
+    let playIcon = makeSvg("thumbnail_play");
+    playIcon.classList.add("thumbnail_overlay");
+    thumbnail.appendChild(playIcon);
 
-    thumbnail.appendChild(iconSvg);
-    thumbnail.appendChild(playSvg);
-
-    // Info: title (filename) + subtitle (extension badge + referer)
-    let info = document.createElement("div");
-    info.className = "entry_info";
-
-    let title = document.createElement("div");
-    title.className = "entry_title";
-    title.textContent = extractFilename(entry.url);
-    title.title = entry.url;
-
-    let subtitle = document.createElement("div");
-    subtitle.className = "entry_subtitle";
-
-    let badge = document.createElement("span");
-    badge.className = "entry_extension_badge";
-    badge.textContent = entry.extension || "?";
-
-    let subtitleText = document.createElement("span");
-    subtitleText.className = "entry_subtitle_text";
-    subtitleText.textContent = entry.referer || "No referer";
-    subtitleText.title = entry.referer || "";
-
-    subtitle.appendChild(badge);
-    subtitle.appendChild(subtitleText);
-
-    info.appendChild(title);
-    info.appendChild(subtitle);
-
-    // Hover-revealed action buttons: copy URL + delete
-    let buttons = document.createElement("div");
-    buttons.className = "entry_buttons";
-
-    let copyBtn = document.createElement("button");
-    copyBtn.className = "entry_button entry_copy_button";
-    copyBtn.title = "Copy URL";
-    copyBtn.appendChild(makeSvg("copy"));
-
-    let deleteBtn = document.createElement("button");
-    deleteBtn.className = "entry_button entry_delete_button";
-    deleteBtn.title = "Delete entry";
-    deleteBtn.appendChild(makeSvg("delete"));
-
-    buttons.appendChild(copyBtn);
-    buttons.appendChild(deleteBtn);
-
-    // Dropdown toggle button
-    let dropdownBtn = document.createElement("div");
-    dropdownBtn.className = "entry_dropdown_button";
-    dropdownBtn.title = "Show more info";
-    dropdownBtn.appendChild(makeSvg("dropdown"));
-
-    top.appendChild(thumbnail);
-    top.appendChild(info);
-    top.appendChild(buttons);
-    top.appendChild(dropdownBtn);
-    entryEl.appendChild(top);
-
-    // Event handlers
     thumbnail.onclick = () => sendEntryToCurrentTab(entry);
-    copyBtn.onclick = () => navigator.clipboard.writeText(entry.url);
-    deleteBtn.onclick = () => deleteEntryById(entry.id);
-    dropdownBtn.onclick = () => toggleExpand(entryEl, entry);
+    return thumbnail;
+}
 
-    entryEl.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        showContextMenu(e, entryEl, entry);
+function createEntryInfo(entry) {
+    let info = div("entry_info");
+
+    let title = div("entry_title", extractFilename(entry.url));
+    title.title = entry.url;
+    info.appendChild(title);
+
+    let subtitle = div("entry_subtitle");
+
+    let badge = span("entry_extension_badge", entry.extension || "?");
+    subtitle.appendChild(badge);
+
+    let refererText = span("entry_subtitle_text", entry.referer || "No referer");
+    refererText.title = entry.referer || "";
+    subtitle.appendChild(refererText);
+
+    info.appendChild(subtitle);
+    return info;
+}
+
+function createEntryButtons(entry) {
+    let buttons = div("entry_buttons");
+
+    let copyButton = button("entry_button entry_copy_button", "Copy URL");
+    copyButton.appendChild(makeSvg("copy"));
+    copyButton.onclick = () => navigator.clipboard.writeText(entry.url);
+    buttons.appendChild(copyButton);
+
+    let deleteButton = button("entry_button entry_delete_button", "Delete entry");
+    deleteButton.appendChild(makeSvg("delete"));
+    deleteButton.onclick = () => deleteEntryById(entry.id);
+    buttons.appendChild(deleteButton);
+
+    return buttons;
+}
+
+function createEntryCard(entry) {
+    let mediaInfo = getMediaTypeInfo(entry.extension);
+
+    let card = div("entry type-" + mediaInfo.type);
+    let top = div("entry_top");
+
+    let thumbnail = createEntryThumbnail(entry, mediaInfo);
+    top.appendChild(thumbnail);
+
+    let info = createEntryInfo(entry);
+    top.appendChild(info);
+
+    let buttons = createEntryButtons(entry);
+    top.appendChild(buttons);
+
+    let dropdownButton = div("entry_dropdown_button");
+    dropdownButton.title = "Show more info";
+    dropdownButton.appendChild(makeSvg("dropdown"));
+    dropdownButton.onclick = () => toggleExpand(card, entry);
+    top.appendChild(dropdownButton);
+
+    card.appendChild(top);
+    card.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        showContextMenu(event, card, entry);
     });
 
-    return entryEl;
+    return card;
 }
 
 // ---------------------------------------------------------------------------------------------
 // Entry dropdown (expanded detail panel)
 // ---------------------------------------------------------------------------------------------
 
+function createDropdownCopyButton(label, value) {
+    let copyButton = button("entry_dropdown_copy_button", "Copy " + label);
+    copyButton.appendChild(makeSvg("copy"));
+    copyButton.onclick = (event) => {
+        event.stopPropagation();
+        navigator.clipboard.writeText(value).then(() => {
+            copyButton.classList.add("copied");
+            copyButton.replaceChildren(makeSvg("accept"));
+            setTimeout(() => {
+                copyButton.classList.remove("copied");
+                copyButton.replaceChildren(makeSvg("copy"));
+            }, COPY_FEEDBACK_DELAY);
+        });
+    };
+    return copyButton;
+}
+
+function createDropdownField(label, icon, value, copyable) {
+    let field = div("entry_dropdown_field");
+
+    let labelRow = div("entry_dropdown_field_label");
+
+    let labelIcon = makeSvg(icon);
+    labelIcon.classList.add("entry_dropdown_field_icon");
+    labelRow.appendChild(labelIcon);
+
+    let labelText = span(null, label);
+    labelRow.appendChild(labelText);
+
+    field.appendChild(labelRow);
+
+    let valueRow = div("entry_dropdown_field_value");
+
+    let valueInput = readOnlyInput("entry_dropdown_field_text", value);
+    valueRow.appendChild(valueInput);
+
+    if (copyable) {
+        let copyButton = createDropdownCopyButton(label, value);
+        valueRow.appendChild(copyButton);
+    }
+
+    field.appendChild(valueRow);
+    return field;
+}
+
+function createDropdownMetaItem(label, icon, value, showInput) {
+    let item = div("entry_dropdown_meta_item");
+
+    let itemIcon = makeSvg(icon);
+    itemIcon.classList.add("entry_dropdown_meta_icon");
+    item.appendChild(itemIcon);
+
+    let text = div("entry_dropdown_meta_text");
+
+    let labelText = span("entry_dropdown_meta_label", label);
+    text.appendChild(labelText);
+
+    if (showInput) {
+        let valueInput = readOnlyInput("entry_dropdown_meta_value", value);
+        text.appendChild(valueInput);
+    } else {
+        let valueText = span("entry_dropdown_meta_value", value);
+        valueText.title = value;
+        text.appendChild(valueText);
+    }
+
+    item.appendChild(text);
+    return item;
+}
+
+function createDropdownQualitiesRow(entry) {
+    let metadata = entry.metadata;
+    if (!metadata || !metadata.qualities || metadata.qualities.length === 0) {
+        return null;
+    }
+
+    let row = div("entry_dropdown_qualities_row");
+
+    let rowLabel = span("entry_dropdown_qualities_label", "Quality");
+    row.appendChild(rowLabel);
+
+    let badges = div("entry_dropdown_qualities");
+    for (let quality of metadata.qualities) {
+        let qualityBadge = span("entry_dropdown_quality_badge", quality);
+        badges.appendChild(qualityBadge);
+    }
+    row.appendChild(badges);
+
+    return row;
+}
+
 function createEntryDropdown(entry) {
-    let dropdown = document.createElement("div");
-    dropdown.className = "entry_dropdown";
+    let dropdown = div("entry_dropdown");
+
+    let urlField = createDropdownField("URL", "link", entry.url, true);
+    dropdown.appendChild(urlField);
+
+    if (entry.referer) {
+        let refererField = createDropdownField("Referer", "link", entry.referer, true);
+        dropdown.appendChild(refererField);
+    }
+
+    dropdown.appendChild(div("entry_dropdown_separator"));
+
+    let metaRow = div("entry_dropdown_meta_row");
+
+    if (entry.origin) {
+        let originItem = createDropdownMetaItem("Origin", "link", entry.origin, true);
+        metaRow.appendChild(originItem);
+    }
+
+    if (entry.extension) {
+        let mediaInfo = getMediaTypeInfo(entry.extension);
+        let typeLabel = entry.extension.toUpperCase();
+        let typeItem = createDropdownMetaItem("Type", mediaInfo.iconKey, typeLabel, false);
+        metaRow.appendChild(typeItem);
+    }
 
     let secondsElapsed = Date.now() / 1000 - entry.time / 1000;
-    let timeStr = formatTime(secondsElapsed);
-    let mediaInfo = getMediaTypeInfo(entry.extension);
+    let capturedItem = createDropdownMetaItem("Captured", "history", formatTime(secondsElapsed), false);
+    metaRow.appendChild(capturedItem);
 
-    // --- Section: Link info (URL + Referer) ---
-
-    let linkFields = [
-        { label: "URL",     value: entry.url,             icon: "link", copy: true },
-        { label: "Referer", value: entry.referer || "N/A", icon: "link", copy: entry.referer != null },
-    ];
-
-    for (let field of linkFields) {
-        if (field.value === "N/A" && !field.copy) continue;
-        let fieldEl = document.createElement("div");
-        fieldEl.className = "entry_dropdown_field";
-
-        let labelRow = document.createElement("div");
-        labelRow.className = "entry_dropdown_field_label";
-
-        let labelIcon = makeSvg(field.icon);
-        labelIcon.classList.add("entry_dropdown_field_icon");
-        labelRow.appendChild(labelIcon);
-
-        let labelText = document.createElement("span");
-        labelText.textContent = field.label;
-        labelRow.appendChild(labelText);
-
-        fieldEl.appendChild(labelRow);
-
-        let valueRow = document.createElement("div");
-        valueRow.className = "entry_dropdown_field_value";
-
-        let valueText = document.createElement("input");
-        valueText.className = "entry_dropdown_field_text";
-        valueText.readOnly = true;
-        valueText.value = field.value;
-        valueText.title = field.value;
-        valueRow.appendChild(valueText);
-
-        if (field.copy && field.value !== "N/A") {
-            let copyBtn = document.createElement("button");
-            copyBtn.className = "entry_dropdown_copy_button";
-            copyBtn.title = "Copy " + field.label;
-            copyBtn.appendChild(makeSvg("copy"));
-            copyBtn.onclick = (e) => {
-                e.stopPropagation();
-                navigator.clipboard.writeText(field.value).then(() => {
-                    copyBtn.classList.add("copied");
-                    copyBtn.innerHTML = "";
-                    copyBtn.appendChild(makeSvg("accept"));
-                    setTimeout(() => {
-                        copyBtn.classList.remove("copied");
-                        copyBtn.innerHTML = "";
-                        copyBtn.appendChild(makeSvg("copy"));
-                    }, 1200);
-                });
-            };
-            valueRow.appendChild(copyBtn);
-        }
-
-        fieldEl.appendChild(valueRow);
-        dropdown.appendChild(fieldEl);
-    }
-
-    // --- Separator ---
-
-    let sep = document.createElement("div");
-    sep.className = "entry_dropdown_separator";
-    dropdown.appendChild(sep);
-
-    // --- Section: Metadata (Origin, Type, Captured on a single row) ---
-
-    let metaFields = [
-        { label: "Origin",   value: entry.origin || "N/A",                              icon: "link",   input: true },
-        { label: "Type",     value: entry.extension ? entry.extension.toUpperCase() : "Unknown", icon: mediaInfo.iconKey },
-        { label: "Captured", value: timeStr,                                            icon: "history" },
-    ];
-
-    let metaGrid = document.createElement("div");
-    metaGrid.className = "entry_dropdown_meta";
-
-    let metaRow = document.createElement("div");
-    metaRow.className = "entry_dropdown_meta_row";
-
-    for (let meta of metaFields) {
-        let metaItem = document.createElement("div");
-        metaItem.className = "entry_dropdown_meta_item";
-
-        let metaIcon = makeSvg(meta.icon);
-        metaIcon.classList.add("entry_dropdown_meta_icon");
-        metaItem.appendChild(metaIcon);
-
-        let metaText = document.createElement("div");
-        metaText.className = "entry_dropdown_meta_text";
-
-        let metaLabel = document.createElement("span");
-        metaLabel.className = "entry_dropdown_meta_label";
-        metaLabel.textContent = meta.label;
-        metaText.appendChild(metaLabel);
-
-        if (meta.input) {
-            let metaValue = document.createElement("input");
-            metaValue.className = "entry_dropdown_meta_value";
-            metaValue.readOnly = true;
-            metaValue.value = meta.value;
-            metaValue.title = meta.value;
-            metaText.appendChild(metaValue);
-        } else {
-            let metaValue = document.createElement("span");
-            metaValue.className = "entry_dropdown_meta_value";
-            metaValue.textContent = meta.value;
-            metaValue.title = meta.value;
-            metaText.appendChild(metaValue);
-        }
-
-        metaItem.appendChild(metaText);
-        metaRow.appendChild(metaItem);
-    }
-
+    let metaGrid = div("entry_dropdown_meta");
     metaGrid.appendChild(metaRow);
     dropdown.appendChild(metaGrid);
 
-    // --- Section: Quality badges (if available) ---
-
-    if (entry.metadata && entry.metadata.qualities && entry.metadata.qualities.length > 0) {
-        let qualSep = document.createElement("div");
-        qualSep.className = "entry_dropdown_separator";
-        dropdown.appendChild(qualSep);
-
-        let qualRow = document.createElement("div");
-        qualRow.className = "entry_dropdown_qualities_row";
-
-        let qualLabel = document.createElement("span");
-        qualLabel.className = "entry_dropdown_qualities_label";
-        qualLabel.textContent = "Quality";
-        qualRow.appendChild(qualLabel);
-
-        let qualitiesWrap = document.createElement("div");
-        qualitiesWrap.className = "entry_dropdown_qualities";
-
-        for (let q of entry.metadata.qualities) {
-            let qBadge = document.createElement("span");
-            qBadge.className = "entry_dropdown_quality_badge";
-            qBadge.textContent = q;
-            qualitiesWrap.appendChild(qBadge);
-        }
-
-        qualRow.appendChild(qualitiesWrap);
-        dropdown.appendChild(qualRow);
+    let qualitiesRow = createDropdownQualitiesRow(entry);
+    if (qualitiesRow) {
+        dropdown.appendChild(div("entry_dropdown_separator"));
+        dropdown.appendChild(qualitiesRow);
     }
 
     return dropdown;
 }
 
 // ---------------------------------------------------------------------------------------------
-// Expand / collapse logic
+// Expand/collapse logic
 // ---------------------------------------------------------------------------------------------
 
 function toggleExpand(entryEl, entry) {
@@ -400,6 +403,7 @@ function expandEntry(entryEl, entry) {
     if (dropdowns.length === 0) {
         let dropdown = createEntryDropdown(entry);
         entryEl.appendChild(dropdown);
+        // Reading offsetHeight forces a reflow, so the expand transition plays
         void dropdown.offsetHeight;
     }
 
@@ -430,13 +434,11 @@ function collapseEntry(entryEl) {
 function showContextMenu(event, entryEl, entry) {
     let x = event.pageX;
     let y = event.pageY;
-    let menuWidth = 150;
-    let menuHeight = 160;
     let bodyWidth = document.body.clientWidth;
     let bodyHeight = document.body.clientHeight;
 
-    if (x + menuWidth > bodyWidth) x = bodyWidth - menuWidth - 4;
-    if (y + menuHeight > bodyHeight) y = bodyHeight - menuHeight - 4;
+    if (x + CONTEXT_MENU_WIDTH > bodyWidth) x = bodyWidth - CONTEXT_MENU_WIDTH - 4;
+    if (y + CONTEXT_MENU_HEIGHT > bodyHeight) y = bodyHeight - CONTEXT_MENU_HEIGHT - 4;
     if (x < 0) x = 4;
     if (y < 0) y = 4;
 
@@ -460,8 +462,8 @@ function hideContextMenu() {
 
 function attachContextMenuLogic() {
     document.addEventListener("click", () => hideContextMenu());
-    document.addEventListener("contextmenu", (e) => {
-        if (!e.target.closest(".entry")) {
+    document.addEventListener("contextmenu", (event) => {
+        if (!event.target.closest(".entry")) {
             hideContextMenu();
         }
     });
@@ -522,8 +524,9 @@ function updateSearchResults() {
         } else {
             let url = (entry.url || "").toLowerCase();
             let referer = (entry.referer || "").toLowerCase();
-            let ext = (entry.extension || "").toLowerCase();
-            if (url.includes(search) || referer.includes(search) || ext.includes(search)) {
+            let extension = (entry.extension || "").toLowerCase();
+            let matches = url.includes(search) || referer.includes(search) || extension.includes(search);
+            if (matches) {
                 card.classList.remove("hide");
                 visibleCount++;
             } else {

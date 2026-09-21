@@ -23,7 +23,7 @@
     --aqua_custom_0: #57684d;  --aqua_custom_1: #494e41;  --aqua_custom_2: #9dd389;
     --dim_0: #00000077;
 
-    /* Entry sizing — shorter than PocketWatch's 64px for the compact popup */
+    /* Entry sizing - shorter than PocketWatch's 64px for the compact popup */
     --entry_height:         52px;
     --entry_border:          2px;
     --dropdown_expand_time:  256ms;
@@ -551,7 +551,7 @@ body {
     display: none;
 }
 
-/* Link fields (URL, Referer) — prominent with label above value */
+/* Link fields (URL, Referer) - prominent with label above value */
 
 .entry_dropdown_field {
     display: flex;
@@ -646,7 +646,7 @@ body {
     margin: 2px 0;
 }
 
-/* Metadata grid (Origin, Type, Captured) — compact icon + label + value */
+/* Metadata grid (Origin, Type, Captured) - compact icon + label + value */
 
 .entry_dropdown_meta {
     display: flex;

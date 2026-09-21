@@ -4,12 +4,12 @@ It integrates with [Pocket Watch](https://github.com/Pocket-Watch) by sending ca
 
 ## Features
 
-- **Automatic capture** — intercepts media requests (video, audio, streams, subtitles) by URL extension or Content-Type
-- **Card-based popup** — browse captured entries with thumbnails, media-type icons, and expandable detail panels
-- **Search** — filter entries by URL, referer, or extension
-- **Deduplicate** — remove duplicate URLs from the capture list
-- **Context menu** — right-click any entry for Insert, Copy URL, Copy Referer, Expand, or Delete
-- **Insert into page** — push a captured URL into the current tab's subtitle or media input fields
+- **Automatic capture** - intercepts media requests (video, audio, streams, subtitles) by URL extension or Content-Type
+- **Card-based popup** - browse captured entries with thumbnails, media-type icons, and expandable detail panels
+- **Search** - filter entries by URL, referer, or extension
+- **Deduplicate** - remove duplicate URLs from the capture list
+- **Context menu** - right-click any entry for Insert, Copy URL, Copy Referer, Expand, or Delete
+- **Insert into page** - push a captured URL into the current tab's subtitle or media input fields
 
 ## Building
 
@@ -73,8 +73,5 @@ This produces `PocketPicker-v1.4.zip` (MV2) or `PocketPicker-v1.4-mv3.zip` (MV3)
 5. Upload the `.zip` file
 6. Mark Firefox and Android compatibility, proceed with other prompts
 7. Once uploaded, click **View all**
-8. Click the version number — if status shows **Awaiting review** the extension is under review
+8. Click the version number - if status shows **Awaiting review** the extension is under review
 9. If status shows **Approved**, right-click the .xpi file and click **Save link as**
-
-
- 

@@ -1,5 +1,3 @@
-console.log("Background worker started at", Date.now(), "!");
-
 const MEDIA_EXTENSIONS = ["mp4", "mp3", "mp2", "mov", "mkv", "webm", "m3u8", "m3u", "txt", "vtt", "srt", "aac", "avi", "ogg", "mpd", "m4s"]
 const ACCEPTED_METHODS = ["GET", "POST", "HEAD"];
 
@@ -34,8 +32,7 @@ if (isChromium) {
     responseSpec.push("extraHeaders");
 }
 
-console.log("Listening with", requestSpec, "and", responseSpec);
-
+// onBeforeRequest does not provide request headers, so onBeforeSendHeaders is used instead
 // TODO: Listen selectively, removeListener when inactive
 browser.webRequest.onBeforeSendHeaders.addListener(processRequest,
     { urls: ["<all_urls>"] },
@@ -92,12 +89,8 @@ async function processRequest(details) {
     }
 
     entry.extension = extension;
-    /*if (extension.startsWith("m3u")) {
-        // TODO, use fetch to extract metadata from response
-    }*/
     entryQueue.push(entry)
     saveState();
-    console.log(entry)
 }
 
 async function processResponse(details) {
@@ -113,7 +106,6 @@ async function processResponse(details) {
     saveState();
     let code = details.statusCode;
     if (code < 200 || code >= 300) {
-        // Will this fire again on redirects?
         return
     }
     let contentType = getHeaderValue(details.responseHeaders, "content-type");
@@ -142,22 +134,20 @@ async function processResponse(details) {
     if (extension.length > 0) {
         entry.extension = extension;
         // Chronological order insert
-        console.log("entryQueue.length", entryQueue.length);
         let insertAt = entryQueue.length;
         for (let i = insertAt - 1; i >= 0; i--) {
-            let e = entryQueue[i];
-            if (e.time < entry.time) {
+            let queuedEntry = entryQueue[i];
+            if (queuedEntry.time < entry.time) {
                 insertAt = i + 1;
                 break;
             }
         }
-        console.log("Adding entry by mime type:", entry)
         entryQueue.splice(insertAt, 0, entry);
         saveState();
     }
 }
 
-// Prevent memory leaks by processing errors or clean up by timestamp
+// Remove pending entries whose requests failed, so they do not leak
 async function processError(details) {
     if (requestMap.size === 0) {
         return
@@ -198,19 +188,16 @@ const DELETE_ENTRY = "delete_entry";
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch (message.type) {
         case GET_ENTRIES:
-            console.log(GET_ENTRIES, "- received from foreground");
             sendResponse({entries: entryQueue});
             return
 
         case CLEAR_ENTRIES:
-            console.log(CLEAR_ENTRIES, "- received from foreground");
             entryQueue.length = 0;
             saveState();
             return
 
         case DELETE_ENTRY:
             let id = message.id;
-            console.log(DELETE_ENTRY, "of id", id, "- received from foreground");
             if (!Number.isInteger(id)) {
                 console.error("ID passed is not an int:", id);
                 return
@@ -278,6 +265,7 @@ function parseM3U8Metadata(content) {
 function getHeaderValue(headers, name) {
     for (let i = 0; i < headers.length; i++) {
         let header = headers[i];
+        // Some requests send the literal value "null", treat it as missing
         if (header.name === name && header.value !== "null") {
             return header.value;
         }
@@ -287,13 +275,14 @@ function getHeaderValue(headers, name) {
 
 class Metadata {
     constructor(type, ...qualities) {
-        this.type = type; // VOD or MASTER or LIVE
+        this.type = type;
         this.qualities = qualities;
     }
 }
 
 class Entry {
     constructor(id, url, origin, referer, tabId) {
+        // Fall back to the origin URL when no referer header was sent
         if (!referer && origin) {
             referer = origin + "/";
         }
@@ -315,5 +304,3 @@ class Entry {
         return new Entry(Number(request.requestId), request.url, origin, referer, tabId);
     }
 }
-// For "webRequest.onBeforeRequest" headers are undefined even if "requestHeaders" is passed.
-// Invalid enumeration value "requestHeaders" for webRequest.onBeforeRequest.
