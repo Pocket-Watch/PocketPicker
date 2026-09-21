@@ -1,17 +1,16 @@
-
 function logInfo(...args) {
-    const message = args.join(' ');
+    const message = args.join(" ");
     console.info("%c[PocketPicker]", "color: green;", message);
 }
 
 function logWarn(...args) {
-    const message = args.join(' ');
+    const message = args.join(" ");
     console.warn("%c[PocketPicker]", "color: red;", message);
 }
 
-// 'browser' is undefined in Chromium but in Firefox both 'chrome' and 'browser' are defined
+// Chromium before Chrome 152 defines only the 'chrome' namespace, Firefox defines both.
+// Content scripts carry no engine specific logic, so no engine flag is kept here.
 if (typeof browser === "undefined") {
-    isChromium = true;
     browser = chrome;
 }
 
@@ -20,11 +19,10 @@ const INSERT_ENTRIES = "insert_entries";
 browser.runtime.onMessage.addListener((message, sender) => {
     if (message.type === INSERT_ENTRIES) {
         let success = performInsertions(message.entry);
-        // send result to foreground (picker.js) and show in UI
         if (success) {
-            logInfo("Inserted into page successfully")
+            logInfo("Inserted into page successfully");
         } else {
-            logWarn("Inserted into page with a failure")
+            logWarn("Inserted into page with a failure");
         }
     }
 });
@@ -35,23 +33,21 @@ function performInsertions(entry) {
         return setText(subtitleUrl, entry.url);
     }
 
-    let success = true;
-
     let urlBox = getById("entry_url_input");
-    success &= setText(urlBox, entry.url);
+    let urlResult = setText(urlBox, entry.url);
 
     let refererBox = getById("entry_dropdown_referer_input");
-    success &= setText(refererBox, entry.referer);
+    let refererResult = setText(refererBox, entry.referer);
 
     let proxyToggleDiv = getById("entry_proxy_toggle");
     if (!proxyToggleDiv) {
         return false;
     }
     if (!proxyToggleDiv.classList.contains("active")) {
-        proxyToggleDiv.click()
+        proxyToggleDiv.click();
     }
 
-    return success;
+    return urlResult && refererResult;
 }
 
 function getById(id) {
@@ -67,8 +63,8 @@ function setText(element, text) {
         logWarn(element, "is not an HTMLElement");
         return false;
     }
-    const tag = element.tagName.toLowerCase(); // Convert to lowercase for consistency
 
+    const tag = element.tagName.toLowerCase();
     switch (tag) {
         case "input":
         case "textarea":

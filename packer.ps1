@@ -5,7 +5,7 @@ param(
 )
 
 $Out = "PocketPicker-v$Version.zip"
-$Include = @('icons','background.js','content.js','picker.css','picker.html','picker.js')
+$Include = @('icons','icons.svg','background.js','content.js','picker.css','picker.html','picker.js','util.js')
 
 if ($mv3) {
   New-Item -ItemType Directory -Path 'tmp' -Force
