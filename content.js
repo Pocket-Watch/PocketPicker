@@ -8,7 +8,8 @@ function logWarn(...args) {
     console.warn("%c[PocketPicker]", "color: red;", message);
 }
 
-// Chrome support for the 'browser' namespace was introduced in Chrome 152.
+// Chromium before Chrome 152 defines only the 'chrome' namespace, Firefox defines both.
+// Content scripts carry no engine specific logic, so no engine flag is kept here.
 if (typeof browser === "undefined") {
     browser = chrome;
 }

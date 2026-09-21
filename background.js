@@ -1,7 +1,7 @@
 const MEDIA_EXTENSIONS = ["mp4", "mp3", "mp2", "mov", "mkv", "webm", "m3u8", "m3u", "txt", "vtt", "srt", "aac", "avi", "ogg", "mpd", "m4s"]
 const ACCEPTED_METHODS = ["GET", "POST", "HEAD"];
 
-// Chrome support for the 'browser' namespace was introduced in Chrome 152.
+// Chromium before Chrome 152 defines only the 'chrome' namespace, Firefox defines both.
 if (typeof browser === "undefined") {
     browser = chrome;
 }
@@ -9,12 +9,14 @@ if (typeof browser === "undefined") {
 function userAgentBrowserName() {
     const ua = navigator.userAgent;
 
+    // Chromium builds, including forks, report "Chrome/", other engines do not
     let nameIndex = ua.lastIndexOf("Chrome/");
     if (nameIndex !== -1) return "Chromium";
 
     nameIndex = ua.lastIndexOf("Firefox/");
     if (nameIndex !== -1) return "Firefox";
 
+    // Safari reports "Version/" without "Chrome/" or "Firefox/"
     nameIndex = ua.lastIndexOf("Version/");
     if (nameIndex !== -1) return "Safari";
 

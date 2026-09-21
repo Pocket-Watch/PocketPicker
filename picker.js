@@ -2,57 +2,11 @@
 // PocketPicker - Foreground popup logic
 // ===========================================================================================
 
+import { getCssNumber, getById, show, hide, clearContent, div, span, button, readOnlyInput, makeSvg, getTimeAgo } from "./util.js";
+
+// Chromium before Chrome 152 defines only the 'chrome' namespace, Firefox defines both.
 if (typeof browser === "undefined") {
     browser = chrome;
-}
-
-// ---------------------------------------------------------------------------------------------
-// DOM helpers
-// ---------------------------------------------------------------------------------------------
-
-function getById(id) {
-    return document.getElementById(id);
-}
-
-function div(className, textContent) {
-    let element = document.createElement("div");
-    element.className = className;
-    if (textContent) element.textContent = textContent;
-    return element;
-}
-
-function span(className, textContent) {
-    let element = document.createElement("span");
-    element.className = className;
-    if (textContent) element.textContent = textContent;
-    return element;
-}
-
-function button(className, title) {
-    let element = document.createElement("button");
-    element.className = className;
-    if (title) element.title = title;
-    return element;
-}
-
-function readOnlyInput(className, value) {
-    let element = document.createElement("input");
-    element.className = className;
-    element.readOnly = true;
-    element.value = value;
-    element.title = value;
-    return element;
-}
-
-const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
-
-// Creates an <svg> element that renders a symbol from icons.svg
-function makeSvg(iconId) {
-    let svgElement = document.createElementNS(SVG_NAMESPACE, "svg");
-    let useElement = document.createElementNS(SVG_NAMESPACE, "use");
-    useElement.setAttribute("href", "icons.svg#" + iconId);
-    svgElement.appendChild(useElement);
-    return svgElement;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -84,7 +38,7 @@ let currentEntry = null;
 let currentEntryEl = null;
 let expandedEntryEl = null;
 
-const DROPDOWN_REMOVE_DELAY = 300;
+const DROPDOWN_EXPAND_TIME = getCssNumber("--dropdown_expand_time", "ms");
 const COPY_FEEDBACK_DELAY = 1200;
 const CONTEXT_MENU_WIDTH = 150;
 const CONTEXT_MENU_HEIGHT = 160;
@@ -117,26 +71,6 @@ function getMediaTypeInfo(extension) {
 // ---------------------------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------------------------
-
-function formatTime(seconds) {
-    if (seconds < 0) seconds = 0;
-    let time = "";
-    if (seconds >= 3600) {
-        let hours = (seconds / 3600) | 0;
-        seconds %= 3600;
-        time += hours + "h ";
-    }
-    if (seconds >= 60) {
-        let minutes = (seconds / 60) | 0;
-        seconds %= 60;
-        time += minutes + "m ";
-    }
-    if (seconds > 0 || time === "") {
-        seconds |= 0;
-        time += seconds + "s ";
-    }
-    return time.trim() + " ago";
-}
 
 function extractFilename(url) {
     try {
@@ -363,8 +297,8 @@ function createEntryDropdown(entry) {
         metaRow.appendChild(typeItem);
     }
 
-    let secondsElapsed = Date.now() / 1000 - entry.time / 1000;
-    let capturedItem = createDropdownMetaItem("Captured", "history", formatTime(secondsElapsed), false);
+    let capturedAt = new Date(entry.time);
+    let capturedItem = createDropdownMetaItem("Captured", "history", getTimeAgo(capturedAt), false);
     metaRow.appendChild(capturedItem);
 
     let metaGrid = div("entry_dropdown_meta");
@@ -403,8 +337,8 @@ function expandEntry(entryEl, entry) {
     if (dropdowns.length === 0) {
         let dropdown = createEntryDropdown(entry);
         entryEl.appendChild(dropdown);
-        // Reading offsetHeight forces a reflow, so the expand transition plays
-        void dropdown.offsetHeight;
+        // Reading the computed height forces a reflow, so the expand transition plays
+        window.getComputedStyle(dropdown).height;
     }
 
     expandedEntryEl = entryEl;
@@ -420,7 +354,7 @@ function collapseEntry(entryEl) {
                 dropdowns[0].remove();
             }
         }
-    }, DROPDOWN_REMOVE_DELAY);
+    }, DROPDOWN_EXPAND_TIME);
 
     if (expandedEntryEl === entryEl) {
         expandedEntryEl = null;
@@ -519,7 +453,7 @@ function updateSearchResults() {
         if (!entry) continue;
 
         if (search === "") {
-            card.classList.remove("hide");
+            show(card);
             visibleCount++;
         } else {
             let url = (entry.url || "").toLowerCase();
@@ -527,10 +461,10 @@ function updateSearchResults() {
             let extension = (entry.extension || "").toLowerCase();
             let matches = url.includes(search) || referer.includes(search) || extension.includes(search);
             if (matches) {
-                card.classList.remove("hide");
+                show(card);
                 visibleCount++;
             } else {
-                card.classList.add("hide");
+                hide(card);
             }
         }
     }
@@ -544,9 +478,9 @@ function updateSearchResults() {
 
 function updateEmptyState(isEmpty) {
     if (isEmpty) {
-        emptyState.classList.remove("hide");
+        show(emptyState);
     } else {
-        emptyState.classList.add("hide");
+        hide(emptyState);
     }
 }
 
@@ -555,9 +489,7 @@ function updateEntryCount(count) {
 }
 
 function clearEntryList() {
-    while (entryList.firstChild) {
-        entryList.removeChild(entryList.firstChild);
-    }
+    clearContent(entryList);
     expandedEntryEl = null;
 }
 
