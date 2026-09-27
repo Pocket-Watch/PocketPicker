@@ -9,9 +9,9 @@ function logWarn(...args) {
 }
 
 // Chromium before Chrome 152 defines only the 'chrome' namespace, Firefox defines both.
-// Content scripts carry no engine specific logic, so no engine flag is kept here.
+// Pragmatically use globalThis because module (strict) scope rejects assignments to undeclared identifiers.
 if (typeof browser === "undefined") {
-    browser = chrome;
+    globalThis.browser = chrome;
 }
 
 const INSERT_ENTRIES = "insert_entries";

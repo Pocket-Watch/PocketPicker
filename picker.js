@@ -5,8 +5,9 @@
 import { getCssNumber, getById, show, hide, clearContent, div, span, button, readOnlyInput, makeSvg, getTimeAgo } from "./util.js";
 
 // Chromium before Chrome 152 defines only the 'chrome' namespace, Firefox defines both.
+// Pragmatically use globalThis because module (strict) scope rejects assignments to undeclared identifiers.
 if (typeof browser === "undefined") {
-    browser = chrome;
+    globalThis.browser = chrome;
 }
 
 // ---------------------------------------------------------------------------------------------

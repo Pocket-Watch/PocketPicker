@@ -2,8 +2,9 @@ const MEDIA_EXTENSIONS = ["mp4", "mp3", "mp2", "mov", "mkv", "webm", "m3u8", "m3
 const ACCEPTED_METHODS = ["GET", "POST", "HEAD"];
 
 // Chromium before Chrome 152 defines only the 'chrome' namespace, Firefox defines both.
+// Pragmatically use globalThis because module (strict) scope rejects assignments to undeclared identifiers.
 if (typeof browser === "undefined") {
-    browser = chrome;
+    globalThis.browser = chrome;
 }
 
 function userAgentBrowserName() {
