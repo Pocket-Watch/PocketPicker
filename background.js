@@ -52,25 +52,10 @@ browser.webRequest.onErrorOccurred.addListener(processError,
 let requestMap = new Map();
 let entryQueue = []
 
-// MV3 service workers can be terminated at any time, so persist state to storage.session
-function saveState() {
-    if (!isMV3) return;
-    chrome.storage.session.set({
-        entryQueue: entryQueue,
-        requestMap: Array.from(requestMap.entries()),
-    });
-}
-
-// Restore state when the service worker wakes up (no-op on MV2, storage won't exist)
+// MV3 workers are terminated after ~30s idle;
+// a periodic API call resets that timer and keeps the in-memory state alive without persistence.
 if (isMV3) {
-    chrome.storage.session.get(["entryQueue", "requestMap"], (result) => {
-        if (result.entryQueue) {
-            entryQueue = result.entryQueue;
-        }
-        if (result.requestMap) {
-            requestMap = new Map(result.requestMap);
-        }
-    });
+    setInterval(() => browser.runtime.getPlatformInfo(), 25 * 1000);
 }
 
 async function processRequest(details) {
@@ -87,7 +72,6 @@ async function processRequest(details) {
     let entry = Entry.fromRequest(details);
     if (missingExt) {
         requestMap.set(entry.id, entry);
-        saveState();
         return;
     }
 
@@ -96,7 +80,6 @@ async function processRequest(details) {
         // TODO, use fetch to extract metadata from response
     }*/
     entryQueue.push(entry)
-    saveState();
     console.log(entry)
 }
 
@@ -110,7 +93,6 @@ async function processResponse(details) {
         return
     }
     requestMap.delete(id)
-    saveState();
     let code = details.statusCode;
     if (code < 200 || code >= 300) {
         // Will this fire again on redirects?
@@ -153,7 +135,6 @@ async function processResponse(details) {
         }
         console.log("Adding entry by mime type:", entry)
         entryQueue.splice(insertAt, 0, entry);
-        saveState();
     }
 }
 
@@ -168,7 +149,6 @@ async function processError(details) {
         return
     }
     requestMap.delete(id)
-    saveState();
 }
 
 function getExtension(pathname) {
@@ -205,7 +185,6 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case CLEAR_ENTRIES:
             console.log(CLEAR_ENTRIES, "- received from foreground");
             entryQueue.length = 0;
-            saveState();
             return
 
         case DELETE_ENTRY:
@@ -218,7 +197,6 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
             for (let i = 0; i < entryQueue.length; i++) {
                 if (entryQueue[i].id === id) {
                     entryQueue.splice(i, 1);
-                    saveState();
                     sendResponse({index: i});
                     break;
                 }
@@ -235,7 +213,6 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 }
             }
             entryQueue = uniqueEntries;
-            saveState();
             sendResponse({entries: entryQueue});
             return
     }
