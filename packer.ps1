@@ -1,3 +1,7 @@
+# Windows Compress-Archive stores nested paths with backslashes,
+# which does not follow the ZIP specification and makes Firefox reject the add-on.
+# Prefer pack.go for archive releases.
+
 param(
   [Parameter(Mandatory=$true, Position=0)]
   [string] $Version,
